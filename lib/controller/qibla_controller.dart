@@ -52,6 +52,10 @@ class QiblaController extends GetxController {
   var locationError = ''.obs;
   var compassError = ''.obs;
 
+  // Settings toggles
+  var isVibrationEnabled = true.obs;
+  var isSoundEnabled = false.obs;
+
   // Stream subscriptions
   StreamSubscription<CompassEvent>? _compassSubscription;
   StreamSubscription<Position>? _locationSubscription;
@@ -73,6 +77,21 @@ class QiblaController extends GetxController {
     if (savedIcon != null && qiblaIconsList.contains(savedIcon)) {
       selectedQiblaIcon.value = savedIcon;
     }
+
+    // Load vibration and sound settings
+    isVibrationEnabled.value = storage.read('isVibrationEnabled') ?? true;
+    isSoundEnabled.value = storage.read('isSoundEnabled') ?? false;
+  }
+
+  // Toggle methods for settings
+  void toggleVibration(bool value) {
+    isVibrationEnabled.value = value;
+    storage.write('isVibrationEnabled', value);
+  }
+
+  void toggleSound(bool value) {
+    isSoundEnabled.value = value;
+    storage.write('isSoundEnabled', value);
   }
 
   void _initCompass() {
@@ -110,8 +129,8 @@ class QiblaController extends GetxController {
     double difference = (heading.value - qiblaAngle.value).abs();
     if (difference > 180) difference = 360 - difference;
 
-    if (difference <= 5 && !hasVibrated) {
-      if (await Vibration.hasVibrator() ?? false) {
+    if (difference <= 5 && !hasVibrated && isVibrationEnabled.value) {
+      if (await Vibration.hasVibrator()) {
         Vibration.vibrate(duration: 300);
         hasVibrated = true;
 
@@ -262,8 +281,8 @@ class QiblaController extends GetxController {
     double difference = (heading.value - qiblaAngle.value).abs();
     if (difference > 180) difference = 360 - difference;
 
-    if (difference <= 5 && !hasVibrated) {
-      if (await Vibration.hasVibrator() ?? false) {
+    if (difference <= 5 && !hasVibrated && isVibrationEnabled.value) {
+      if (await Vibration.hasVibrator()) {
         Vibration.vibrate(duration: 300);
         hasVibrated = true;
 

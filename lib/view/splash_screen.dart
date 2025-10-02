@@ -45,7 +45,7 @@ class SplashScreen extends StatelessWidget {
 
               // Text with sequential animations
               Text(
-                    'Qibla Finder',
+                    'Qibla Compass',
                     style: GoogleFonts.poppins(
                       color: Colors.white,
                       fontSize: 28,

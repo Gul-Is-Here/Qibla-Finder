@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- For Android 12+ -->
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" 
         android:usesPermissionFlags="neverForLocation" />
@@ -10,7 +12,7 @@
     <!-- Required for compass functionality -->
     <uses-permission android:name="android.permission.ACCESS_MAGNETIC_FIELD" />
     <application
-        android:label="Qibla Finder"
+        android:label="Qibla Compass - Offline"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -40,6 +42,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+            
+        <!-- Google AdMob App ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-2744970719381152~9388191779"/>
+            
          <!-- For Google Play Services location -->
         <!-- <meta-data
             android:name="com.google.android.gms.version"
