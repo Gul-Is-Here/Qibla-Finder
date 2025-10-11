@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qibla_compass_offline/constants/strings.dart';
+import 'package:qibla_compass_offline/view/main_navigation_screen.dart';
 import 'package:qibla_compass_offline/view/optimized_home_screen.dart';
 
 import '../view/about_screen.dart';
@@ -88,8 +89,8 @@ Widget buildDrawer(BuildContext context) {
                 icon: Icons.home,
                 title: 'Home',
                 onTap: () {
-                  Get.offAll(
-                    () => OptimizedHomeScreen(),
+                  Get.off(
+                    () => MainNavigationScreen(),
                   ); // Use offAll to prevent going back to previous screen
                 },
               ).animate(delay: 100.ms).fadeIn().slideX(begin: -0.5),

@@ -14,11 +14,18 @@
     <key>UIBackgroundModes</key>
     <array>
         <string>location</string>
+        <string>audio</string>
+        <string>fetch</string>
     </array>
     
     <!-- Compass requirements -->
     <key>NSMotionUsageDescription</key>
     <string>Need motion access for compass functionality</string>
+    
+    <!-- Notification permissions -->
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>We need notifications to remind you of prayer times with Azan</string>
+    
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

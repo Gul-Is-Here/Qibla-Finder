@@ -12,7 +12,7 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     Future.delayed(GetNumUtils(3).seconds, () {
       // Extended duration for animations
-      Get.offNamed(Routes.HOME);
+      Get.offNamed(Routes.MAIN); // Navigate to main navigation with tabs
     });
 
     return Scaffold(

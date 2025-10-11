@@ -9,12 +9,16 @@ import 'services/ad_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/location_service.dart';
 import 'services/performance_service.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize GetStorage
   await GetStorage.init();
+
+  // Initialize Notification Service
+  await NotificationService.instance.initialize();
 
   // Initialize services
   Get.put(PerformanceService());

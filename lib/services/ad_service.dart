@@ -17,6 +17,12 @@ class AdService extends GetxController {
    * - Set _disableAdsForStore = false  
    * - This will enable all ads for live users
    * 
+   * FAMILY-FRIENDLY AD COMPLIANCE:
+   * - Only ONE banner ad per screen (top banner only)
+   * - NO bottom banner to comply with "one ad per page" rule
+   * - Interstitial ads have NO immersive mode (close button always visible)
+   * - Reduced ad frequency for family-friendly experience
+   * 
    * AD UNIT IDs (Production):
    * - Banner: ca-app-pub-2744970719381152/8104539777
    * - Interstitial: ca-app-pub-2744970719381152/1432331975
@@ -31,7 +37,7 @@ class AdService extends GetxController {
   // Set to TRUE to disable ads for store review/submission
   // Set to FALSE to enable ads for production release
   static const bool _disableAdsForStore =
-      true; // Ad Unit IDs - Production IDs for Play Store
+      false; // DISABLED - Content rating mismatch issue
   static final String _bannerAdUnitId = Platform.isAndroid
       ? 'ca-app-pub-2744970719381152/8104539777' // Production Android Banner Ad Unit ID
       : 'ca-app-pub-2744970719381152/8104539777'; // Production iOS Banner Ad Unit ID
@@ -183,7 +189,8 @@ class AdService extends GetxController {
           _interstitialAd = ad;
           isInterstitialAdLoaded.value = true;
 
-          _interstitialAd?.setImmersiveMode(true);
+          // Remove immersive mode to ensure close button is always visible
+          // _interstitialAd?.setImmersiveMode(true); // Commented out for family compliance
           print('Interstitial ad loaded successfully');
         },
         onAdFailedToLoad: (error) {
@@ -303,9 +310,10 @@ class AdService extends GetxController {
   }
 
   bool shouldShowInterstitialAd() {
-    // Show interstitial ad every 3rd app launch or after 5 minutes
+    // Family-friendly ad frequency: Show less frequently for better UX
+    // Show interstitial ad every 5th app launch or after 10 minutes (was 3rd/5min)
     final timeSinceLastClick = DateTime.now().difference(lastAdClickTime.value);
-    return timeSinceLastClick.inMinutes >= 5 || adClickCount.value % 3 == 0;
+    return timeSinceLastClick.inMinutes >= 10 || adClickCount.value % 5 == 0;
   }
 
   // Smart ad loading based on network conditions

@@ -420,12 +420,8 @@ class OptimizedHomeScreen extends StatelessWidget {
               ),
             ),
 
-            const OptimizedBannerAdWidget(
-              key: ValueKey('bottom_banner'),
-              padding: EdgeInsets.only(top: 8.0),
-              showOnlyWhenLoaded: true,
-              isBottomBanner: true,
-            ),
+            // Bottom space for better UI without bottom banner ad
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -452,7 +448,7 @@ class OptimizedHomeScreen extends StatelessWidget {
 
               if (adService.shouldShowInterstitialAd()) {
                 adService.showInterstitialAd(
-                  onAdClosed: () => Get.offAllNamed(Routes.HOME),
+                  onAdClosed: () => Get.offAllNamed(Routes.MAIN),
                 );
               } else {
                 Get.offAllNamed(Routes.HOME);
