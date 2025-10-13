@@ -261,46 +261,106 @@ class PrayerTimesController extends GetxController {
   }
 
   void _startNextPrayerTimer() {
-    // Update time until next prayer every minute
-    Stream.periodic(const Duration(minutes: 1)).listen((_) {
+    // Calculate immediately on start
+    if (prayerTimes.value != null) {
+      nextPrayer.value = prayerTimes.value!.getNextPrayer();
+      _calculateTimeUntilNextPrayer();
+    }
+
+    // Update time until next prayer every second for countdown
+    Stream.periodic(const Duration(seconds: 1)).listen((_) {
       if (prayerTimes.value != null) {
-        nextPrayer.value = prayerTimes.value!.getNextPrayer();
+        // Recalculate next prayer (in case current one has passed)
+        final newNextPrayer = prayerTimes.value!.getNextPrayer();
+        if (newNextPrayer != nextPrayer.value) {
+          // Prayer has changed, update it
+          nextPrayer.value = newNextPrayer;
+        }
         _calculateTimeUntilNextPrayer();
       }
     });
   }
 
   void _calculateTimeUntilNextPrayer() {
-    if (prayerTimes.value == null) return;
+    if (prayerTimes.value == null) {
+      timeUntilNextPrayer.value = 'Calculating...';
+      return;
+    }
 
     final now = DateTime.now();
     final prayers = prayerTimes.value!.getAllPrayerTimes();
     final nextPrayerName = nextPrayer.value;
 
-    if (prayers.containsKey(nextPrayerName)) {
+    if (nextPrayerName.isEmpty || !prayers.containsKey(nextPrayerName)) {
+      timeUntilNextPrayer.value = 'Loading...';
+      return;
+    }
+
+    try {
       final nextPrayerTimeStr = prayers[nextPrayerName]!;
-      final nextPrayerTime = _parseTime(nextPrayerTimeStr);
+      DateTime nextPrayerTime = _parseTime(nextPrayerTimeStr);
+
+      // If the next prayer is "Fajr" and its time has passed today,
+      // it means it's for tomorrow, so add 1 day
+      if (nextPrayerName == 'Fajr' && nextPrayerTime.isBefore(now)) {
+        nextPrayerTime = nextPrayerTime.add(const Duration(days: 1));
+      }
 
       if (nextPrayerTime.isAfter(now)) {
         final duration = nextPrayerTime.difference(now);
         final hours = duration.inHours;
         final minutes = duration.inMinutes.remainder(60);
+        final seconds = duration.inSeconds.remainder(60);
 
         if (hours > 0) {
-          timeUntilNextPrayer.value = '${hours}h ${minutes}m';
+          timeUntilNextPrayer.value = '${hours}h ${minutes}m ${seconds}s';
+        } else if (minutes > 0) {
+          timeUntilNextPrayer.value = '${minutes}m ${seconds}s';
+        } else if (seconds > 0) {
+          timeUntilNextPrayer.value = '${seconds}s';
         } else {
-          timeUntilNextPrayer.value = '${minutes}m';
+          timeUntilNextPrayer.value = 'Now';
         }
+      } else {
+        // This shouldn't happen, but just in case
+        timeUntilNextPrayer.value = 'Calculating...';
       }
+    } catch (e) {
+      print('Error calculating time until next prayer: $e');
+      timeUntilNextPrayer.value = 'Error';
     }
   }
 
   DateTime _parseTime(String time) {
-    final parts = time.split(':');
-    final hour = int.parse(parts[0]);
-    final minute = int.parse(parts[1].split(' ')[0]);
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day, hour, minute);
+    try {
+      // Remove extra spaces and trim
+      final cleanTime = time.trim();
+      final parts = cleanTime.split(':');
+
+      if (parts.length < 2) {
+        throw FormatException('Invalid time format: $time');
+      }
+
+      int hour = int.parse(parts[0]);
+      final minutePart = parts[1].split(' ');
+      int minute = int.parse(minutePart[0]);
+
+      // Handle AM/PM if present
+      if (minutePart.length > 1) {
+        final period = minutePart[1].toLowerCase();
+        if (period == 'pm' && hour != 12) {
+          hour += 12;
+        } else if (period == 'am' && hour == 12) {
+          hour = 0;
+        }
+      }
+
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day, hour, minute);
+    } catch (e) {
+      print('Error parsing time "$time": $e');
+      return DateTime.now();
+    }
   }
 
   Future<void> _updateLocationName(Position position) async {

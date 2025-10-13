@@ -14,7 +14,7 @@ class NotificationSettingsScreen extends StatelessWidget {
       backgroundColor: Colors.white,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: const Color(0xFF00897B),
+        backgroundColor: const Color(0xFF00332F),
         title: Text(
           'Notification Settings',
           style: GoogleFonts.poppins(
@@ -41,12 +41,12 @@ class NotificationSettingsScreen extends StatelessWidget {
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF00897B), Color(0xFF00695C)],
+                    colors: [Color(0xFF00332F), Color(0xFF00332F)],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF00897B).withOpacity(0.3),
+                      color: const Color(0xFF00332F).withOpacity(0.3),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -142,19 +142,6 @@ class NotificationSettingsScreen extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: Obx(
-        () => controller.notificationsEnabled.value
-            ? FloatingActionButton.extended(
-                onPressed: () => _showTestNotificationDialog(controller),
-                backgroundColor: const Color(0xFF00897B),
-                icon: const Icon(Icons.play_arrow),
-                label: Text(
-                  'Test',
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                ),
-              )
-            : const SizedBox.shrink(),
-      ),
     );
   }
 
@@ -194,7 +181,7 @@ class NotificationSettingsScreen extends StatelessWidget {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF00897B).withOpacity(0.1),
+                color: const Color(0xFF00332F).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.volume_up, color: Color(0xFF00897B)),
@@ -224,7 +211,7 @@ class NotificationSettingsScreen extends StatelessWidget {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF00897B).withOpacity(0.1),
+                color: const Color(0xFF00332F).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -246,7 +233,7 @@ class NotificationSettingsScreen extends StatelessWidget {
             trailing: Switch(
               value: controller.silentMode.value,
               onChanged: (value) => controller.toggleSilentMode(value),
-              activeColor: const Color(0xFF00897B),
+              activeColor: const Color(0xFF00332F),
             ),
           ),
 
@@ -272,7 +259,7 @@ class NotificationSettingsScreen extends StatelessWidget {
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF00897B),
+                          color: const Color(0xFF00332F),
                         ),
                       ),
                     ],
@@ -280,7 +267,7 @@ class NotificationSettingsScreen extends StatelessWidget {
                   Slider(
                     value: controller.volume.value,
                     onChanged: (value) => controller.setVolume(value),
-                    activeColor: const Color(0xFF00897B),
+                    activeColor: const Color(0xFF00332F),
                     inactiveColor: Colors.grey[300],
                   ),
                 ],
@@ -322,7 +309,7 @@ class NotificationSettingsScreen extends StatelessWidget {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: isEnabled
-                ? const Color(0xFF00897B).withOpacity(0.1)
+                ? const Color(0xFF00332F).withOpacity(0.1)
                 : Colors.grey[200],
             borderRadius: BorderRadius.circular(10),
           ),
@@ -344,13 +331,13 @@ class NotificationSettingsScreen extends StatelessWidget {
           isEnabled ? 'Notification enabled' : 'Notification disabled',
           style: GoogleFonts.poppins(
             fontSize: 12,
-            color: isEnabled ? const Color(0xFF00897B) : Colors.grey[500],
+            color: isEnabled ? const Color(0xFF00332F) : Colors.grey[500],
           ),
         ),
         trailing: Switch(
           value: isEnabled,
           onChanged: (value) => controller.togglePrayer(prayer, value),
-          activeColor: const Color(0xFF00897B),
+          activeColor: const Color(0xFF00332F),
         ),
       ),
     );
@@ -377,7 +364,7 @@ class NotificationSettingsScreen extends StatelessWidget {
             leading: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF00897B).withOpacity(0.1),
+                color: const Color(0xFF00332F).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.vibration, color: Color(0xFF00897B)),
@@ -396,7 +383,7 @@ class NotificationSettingsScreen extends StatelessWidget {
             trailing: Switch(
               value: controller.vibration.value,
               onChanged: (value) => controller.toggleVibration(value),
-              activeColor: const Color(0xFF00897B),
+              activeColor: const Color(0xFF00332F),
             ),
           ),
           Divider(height: 1, color: Colors.grey[300]),
@@ -423,7 +410,7 @@ class NotificationSettingsScreen extends StatelessWidget {
             trailing: Switch(
               value: controller.fullScreenIntent.value,
               onChanged: (value) => controller.toggleFullScreenIntent(value),
-              activeColor: const Color(0xFF00897B),
+              activeColor: const Color(0xFF00332F),
             ),
           ),
           Divider(height: 1, color: Colors.grey[300]),
@@ -551,7 +538,7 @@ class NotificationSettingsScreen extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.info_outline,
-                    color: Color(0xFF00897B),
+                    color: Color(0xFF00332F),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -560,7 +547,7 @@ class NotificationSettingsScreen extends StatelessWidget {
                       'The notification will appear in 5 seconds',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
-                        color: const Color(0xFF00897B),
+                        color: const Color(0xFF00332F),
                       ),
                     ),
                   ),
@@ -584,7 +571,7 @@ class NotificationSettingsScreen extends StatelessWidget {
               Get.snackbar(
                 '⏱️ Test Scheduled',
                 'Notification will appear in 5 seconds',
-                backgroundColor: const Color(0xFF00897B),
+                backgroundColor: const Color(0xFF00332F),
                 colorText: Colors.white,
                 icon: const Icon(Icons.schedule, color: Colors.white),
                 snackPosition: SnackPosition.BOTTOM,
@@ -592,7 +579,7 @@ class NotificationSettingsScreen extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF00897B),
+              backgroundColor: const Color(0xFF00332F),
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.send),

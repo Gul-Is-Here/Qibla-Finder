@@ -4,12 +4,14 @@ import 'package:get_storage/get_storage.dart';
 
 import 'bindings/qibla_binding.dart';
 import 'controller/qibla_controller.dart';
+import 'controller/quran_controller.dart';
 import 'routes/app_pages.dart';
 import 'services/ad_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/location_service.dart';
 import 'services/performance_service.dart';
 import 'services/notification_service.dart';
+import 'services/app_update_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,12 +27,23 @@ void main() async {
   Get.put(AdService());
   Get.put(LocationService());
   Get.put(ConnectivityService());
+  Get.put(AppUpdateService());
+  Get.put(QuranController());
   Get.put(
     QiblaController(
       locationService: Get.find(),
       connectivityService: Get.find(),
     ),
   );
+
+  // Check for app updates after a short delay (silent auto-update)
+  Future.delayed(const Duration(seconds: 3), () {
+    try {
+      AppUpdateService.instance.checkForUpdate();
+    } catch (e) {
+      print('Update check failed: $e');
+    }
+  });
 
   runApp(const MyApp());
 }

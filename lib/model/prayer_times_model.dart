@@ -78,26 +78,51 @@ class PrayerTimesModel {
     final now = DateTime.now();
     final prayers = {
       'Fajr': _parseTime(fajr),
-      'Sunrise': _parseTime(sunrise),
       'Dhuhr': _parseTime(dhuhr),
       'Asr': _parseTime(asr),
       'Maghrib': _parseTime(maghrib),
       'Isha': _parseTime(isha),
     };
 
+    // Find the next upcoming prayer
     for (var entry in prayers.entries) {
       if (entry.value.isAfter(now)) {
         return entry.key;
       }
     }
-    return 'Fajr'; // Next day Fajr
+
+    // If no prayer is left today, return Fajr (next day)
+    return 'Fajr';
   }
 
   DateTime _parseTime(String time) {
-    final parts = time.split(':');
-    final hour = int.parse(parts[0]);
-    final minute = int.parse(parts[1].split(' ')[0]);
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day, hour, minute);
+    try {
+      final cleanTime = time.trim();
+      final parts = cleanTime.split(':');
+
+      if (parts.length < 2) {
+        throw FormatException('Invalid time format: $time');
+      }
+
+      int hour = int.parse(parts[0]);
+      final minutePart = parts[1].split(' ');
+      int minute = int.parse(minutePart[0]);
+
+      // Handle AM/PM if present
+      if (minutePart.length > 1) {
+        final period = minutePart[1].toLowerCase();
+        if (period == 'pm' && hour != 12) {
+          hour += 12;
+        } else if (period == 'am' && hour == 12) {
+          hour = 0;
+        }
+      }
+
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day, hour, minute);
+    } catch (e) {
+      print('Error parsing time in model "$time": $e');
+      return DateTime.now();
+    }
   }
 }

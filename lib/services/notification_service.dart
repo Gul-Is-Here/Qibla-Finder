@@ -130,6 +130,45 @@ class NotificationService {
     }
   }
 
+  // Get prayer emoji based on prayer name
+  String _getPrayerEmoji(String prayerName) {
+    switch (prayerName.toLowerCase()) {
+      case 'fajr':
+        return '🌅';
+      case 'dhuhr':
+        return '☀️';
+      case 'asr':
+        return '🌤️';
+      case 'maghrib':
+        return '🌇';
+      case 'isha':
+        return '🌙';
+      default:
+        return '🕌';
+    }
+  }
+
+  // Get beautiful notification body with time formatting
+  String _getNotificationBody(
+    String prayerName,
+    DateTime prayerTime,
+    String? locationName,
+  ) {
+    final timeStr =
+        '${prayerTime.hour.toString().padLeft(2, '0')}:${prayerTime.minute.toString().padLeft(2, '0')}';
+
+    final messages = {
+      'Fajr': 'Begin your day with peace. Time for Fajr prayer at $timeStr',
+      'Dhuhr': 'Take a break and pray. Dhuhr time at $timeStr',
+      'Asr': 'Afternoon prayer time. Asr at $timeStr',
+      'Maghrib': 'Sunset prayer time. Maghrib at $timeStr',
+      'Isha': 'End your day with devotion. Isha at $timeStr',
+    };
+
+    return messages[prayerName] ??
+        'It\'s time for $prayerName prayer at $timeStr';
+  }
+
   // Schedule notification for a specific prayer
   Future<void> scheduleAzanNotification({
     required int id,
@@ -142,43 +181,56 @@ class NotificationService {
 
     // Only schedule if prayer time is in the future
     if (prayerTime.isBefore(DateTime.now())) {
+      print('Skipping $prayerName - time has passed ($prayerTime)');
       return;
     }
+
+    final emoji = _getPrayerEmoji(prayerName);
+    final body = _getNotificationBody(prayerName, prayerTime, locationName);
 
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: id,
         channelKey: 'prayer_channel',
-        title: '🕌 $prayerName Prayer Time',
-        body: locationName != null
-            ? 'It\'s time for $prayerName prayer in $locationName'
-            : 'It\'s time for $prayerName prayer',
+        title: '$emoji $prayerName Prayer Time',
+        body: body,
+        summary: locationName ?? '',
         notificationLayout: NotificationLayout.BigText,
         category: NotificationCategory.Alarm,
         wakeUpScreen: true,
         fullScreenIntent: true,
         autoDismissible: false,
-        backgroundColor: const Color(0xFF00897B),
-        payload: {'prayer': prayerName, 'time': prayerTime.toIso8601String()},
+        backgroundColor: const Color(0xFF00332F),
+        color: const Color(0xFF00897B),
+        payload: {
+          'prayer': prayerName,
+          'time': prayerTime.toIso8601String(),
+          'location': locationName ?? '',
+        },
+        criticalAlert: true,
+        roundedLargeIcon: true,
+        largeIcon: 'resource://drawable/ic_launcher',
       ),
       actionButtons: [
         NotificationActionButton(
           key: 'STOP_AZAN',
-          label: 'Stop Azan',
+          label: '🔇 Stop Azan',
           color: Colors.red,
           autoDismissible: true,
+          actionType: ActionType.Default,
         ),
         NotificationActionButton(
           key: 'MARK_PRAYED',
-          label: 'Mark as Prayed',
+          label: '✓ Prayed',
           color: const Color(0xFF00897B),
           autoDismissible: true,
+          actionType: ActionType.Default,
         ),
       ],
       schedule: NotificationCalendar.fromDate(date: prayerTime),
     );
 
-    print('Scheduled notification for $prayerName at $prayerTime (ID: $id)');
+    print('✓ Scheduled $prayerName notification for $prayerTime (ID: $id)');
   }
 
   // Schedule all prayers for a specific day

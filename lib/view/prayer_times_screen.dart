@@ -6,6 +6,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:intl/intl.dart';
 import '../controller/prayer_times_controller.dart';
 import '../services/ad_service.dart';
+import '../widget/shimmer_loading_widgets.dart';
 import 'notification_settings_screen.dart';
 
 class PrayerTimesScreen extends StatefulWidget {
@@ -55,9 +56,43 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     super.dispose();
   }
 
-  Color get primary => const Color(0xFF00897B);
-  Color get primaryDark => const Color(0xFF00695C);
+  Color get primary => const Color(0xFF00332F);
+  Color get primaryDark => const Color(0xFF00251F);
   Color get accent => const Color(0xFFFFC107);
+
+  // Helper function to format time to 12-hour format with AM/PM
+  String _formatTimeTo12Hour(String time) {
+    try {
+      final cleanTime = time.trim();
+      final parts = cleanTime.split(':');
+
+      if (parts.length < 2) {
+        return time; // Return original if invalid format
+      }
+
+      int hour = int.parse(parts[0]);
+      final minute = parts[1].split(
+        ' ',
+      )[0]; // Get minute part without any AM/PM
+
+      String period = 'AM';
+
+      if (hour >= 12) {
+        period = 'PM';
+        if (hour > 12) {
+          hour -= 12;
+        }
+      }
+
+      if (hour == 0) {
+        hour = 12;
+      }
+
+      return '$hour:$minute $period';
+    } catch (e) {
+      return time; // Return original if parsing fails
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,12 +100,18 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: primary,
+        title: _topBar(controller),
+        toolbarHeight: 70,
+      ),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: Obx(() {
           if (controller.isLoading.value &&
               controller.prayerTimes.value == null) {
-            return _loading();
+            return ShimmerLoadingWidgets.prayerTimesShimmer();
           }
           if (controller.errorMessage.value.isNotEmpty) {
             return _error(controller);
@@ -79,32 +120,22 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
           return RefreshIndicator(
             onRefresh: controller.refreshPrayerTimes,
             color: primary,
-            child: NestedScrollView(
-              headerSliverBuilder: (context, inner) => [
-                _sliverHeader(controller),
-              ],
-              body: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    if (!controller.isOnline.value)
-                      _animatedSlideIn(_offlineBanner(), delay: 100),
-                    const SizedBox(height: 12),
-                    _animatedSlideIn(
-                      ScaleTransition(
-                        scale: _pulseAnimation,
-                        child: _nextPrayerCard(controller),
-                      ),
-                      delay: 200,
-                    ),
-                    _animatedSlideIn(_dateNavigator(controller), delay: 300),
-                    if (controller.prayerTimes.value != null)
-                      _animatedPrayerTiles(controller),
-                    const SizedBox(height: 16),
-                    Obx(() => _animatedSlideIn(_buildBannerAd(), delay: 800)),
-                    const SizedBox(height: 28),
-                  ],
-                ),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  if (!controller.isOnline.value)
+                    _animatedSlideIn(_offlineBanner(), delay: 100),
+                  const SizedBox(height: 12),
+                  _nextPrayerCard(controller),
+
+                  _animatedSlideIn(_dateNavigator(controller), delay: 300),
+                  if (controller.prayerTimes.value != null)
+                    _animatedPrayerTiles(controller),
+                  const SizedBox(height: 16),
+                  _animatedSlideIn(_buildBannerAd(), delay: 800),
+                  const SizedBox(height: 28),
+                ],
               ),
             ),
           );
@@ -159,113 +190,42 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     );
   }
 
-  // ---------- Sliver Header (collapsing) ----------
-  Widget _sliverHeader(PrayerTimesController controller) {
-    return SliverAppBar(
-      pinned: true,
-      elevation: 0,
-      expandedHeight: 150,
-      backgroundColor: primary,
-      leadingWidth: 0,
-      leading: const SizedBox.shrink(),
-      titleSpacing: 0,
-      title: _topBar(controller),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [primary, primaryDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-            // Decorative blobs
-            Positioned(
-              top: -30,
-              left: -20,
-              child: _blob(120, Colors.white.withOpacity(.08)),
-            ),
-            Positioned(
-              bottom: -40,
-              right: -20,
-              child: _blob(160, Colors.white.withOpacity(.06)),
-            ),
-            // Bottom rounded edge
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                height: 22,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+  // ---------- Top Bar for AppBar ----------
   Widget _topBar(PrayerTimesController controller) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 8, 0),
-        child: Row(
-          children: [
-            const Icon(Icons.location_on, color: Colors.white, size: 18),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Obx(
-                () => Text(
-                  controller.locationName.value.isEmpty
-                      ? 'Loading location...'
-                      : controller.locationName.value,
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Prayer Times',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
-            // Notifications - Navigate to settings
-            Obx(
-              () => IconButton(
-                tooltip: 'Notification Settings',
-                icon: Icon(
-                  controller.notificationsEnabled.value
-                      ? Icons.notifications_active
-                      : Icons.notifications_off,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                onPressed: () =>
-                    Get.to(() => const NotificationSettingsScreen()),
-              ),
-            ),
-            // Date picker
-            IconButton(
-              tooltip: 'Pick date',
-              icon: const Icon(
-                Icons.calendar_today,
-                color: Colors.white,
-                size: 18,
-              ),
-              onPressed: () => _showDatePicker(controller),
-            ),
-
-            // PRO badge
-          ],
+          ),
         ),
-      ),
+
+        // Notifications - Navigate to settings
+        Obx(
+          () => IconButton(
+            tooltip: 'Notification Settings',
+            icon: Icon(
+              controller.notificationsEnabled.value
+                  ? Icons.notifications_active
+                  : Icons.notifications_off,
+              color: Colors.white,
+              size: 20,
+            ),
+            onPressed: () => Get.to(() => const NotificationSettingsScreen()),
+          ),
+        ),
+        // Date picker
+        IconButton(
+          tooltip: 'Pick date',
+          icon: Icon(Icons.calendar_today, color: Colors.white, size: 18),
+          onPressed: () => _showDatePicker(controller),
+        ),
+      ],
     );
   }
 
@@ -306,6 +266,18 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
         ? 'Calculating...'
         : controller.timeUntilNextPrayer.value;
 
+    // Get the next prayer time
+    String nextPrayerTime = '';
+    if (controller.prayerTimes.value != null &&
+        controller.nextPrayer.value.isNotEmpty) {
+      final prayers = controller.prayerTimes.value!.getAllPrayerTimes();
+      nextPrayerTime = prayers[controller.nextPrayer.value] ?? '';
+    }
+
+    final location = controller.locationName.value.isEmpty
+        ? 'Loading location...'
+        : controller.locationName.value;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: ClipRRect(
@@ -314,10 +286,10 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
           children: [
             // Background gradient
             Container(
-              height: 180,
+              height: 200,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [primary, primaryDark],
+                  colors: [Color(0xFF00332F), Color(0xFF00332F)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -338,128 +310,122 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
             ),
             // Content
             Container(
-              height: 170,
-              padding: const EdgeInsets.all(18),
-              child: Row(
+              height: 200,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Text
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // chip
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
+                  // Location with icon
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        color: Colors.white.withOpacity(.85),
+                        size: 16,
+                      ),
+                      SizedBox(width: 10),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Text(
+                          location,
+                          key: ValueKey(location),
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(.85),
+                            fontWeight: FontWeight.w500,
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(.18),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'UPCOMING',
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 11,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 10),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: Text(
-                            nextName,
-                            key: ValueKey(nextName),
-                            style: GoogleFonts.poppins(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              height: 1.1,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.access_time,
-                              color: Colors.white70,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Time left',
-                              style: GoogleFonts.poppins(
-                                fontSize: 13,
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          transitionBuilder: (child, anim) =>
-                              FadeTransition(opacity: anim, child: child),
-                          child: Text(
-                            timeLeft,
-                            key: ValueKey(timeLeft),
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  // Animated badge
-                  _pulsingMosqueBadge(),
+                  const SizedBox(height: 16),
+                  // Prayer Name and Time in one row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Prayer Name
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: Text(
+                          nextName,
+                          key: ValueKey(nextName),
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            height: 1.1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Prayer Time
+                      if (nextPrayerTime.isNotEmpty)
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: Text(
+                            _formatTimeTo12Hour(nextPrayerTime),
+                            key: ValueKey(nextPrayerTime),
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // Time Left Section
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Time left: ',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(.85),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(
+                        Icons.access_time_rounded,
+                        color: Colors.white.withOpacity(.9),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, anim) =>
+                            FadeTransition(opacity: anim, child: child),
+                        child: Text(
+                          timeLeft,
+                          key: ValueKey(timeLeft),
+                          style: GoogleFonts.robotoMono(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'left',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: Colors.white.withOpacity(.85),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _pulsingMosqueBadge() {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 1.0, end: 1.08),
-      duration: const Duration(seconds: 1),
-      curve: Curves.easeInOut,
-      onEnd: () {},
-      builder: (context, value, _) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            width: 78,
-            height: 78,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  Colors.white.withOpacity(.25),
-                  Colors.white.withOpacity(.10),
-                ],
-              ),
-              border: Border.all(
-                color: Colors.white.withOpacity(.30),
-                width: 1,
-              ),
-            ),
-            child: const Center(
-              child: Icon(Icons.mosque, color: Colors.white, size: 40),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -667,7 +633,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  prayerTime,
+                  _formatTimeTo12Hour(prayerTime),
                   style: GoogleFonts.robotoMono(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -851,7 +817,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(color: Color(0xFF00897B)),
+          const CircularProgressIndicator(color: Color(0xFF00332F)),
           const SizedBox(height: 16),
           Text(
             'Loading Prayer Times…',
@@ -880,7 +846,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
             ElevatedButton.icon(
               onPressed: controller.refreshPrayerTimes,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00897B),
+                backgroundColor: const Color(0xFF00332F),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 28,
@@ -926,14 +892,14 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
         return Theme(
           data: ThemeData.light().copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF00897B),
+              primary: Color(0xFF00332F),
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black87,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF00897B),
+                foregroundColor: const Color(0xFF00332F),
               ),
             ),
           ),
@@ -948,28 +914,38 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
   Widget _buildBannerAd() {
     final adService = Get.find<AdService>();
 
-    // Check if ads are disabled for store or if banner is not loaded
-    if (AdService.areAdsDisabled || !adService.isBannerAdLoaded.value) {
-      return const SizedBox.shrink();
-    }
+    return Obx(() {
+      // Check if ads are disabled for store or if banner is not loaded
+      if (AdService.areAdsDisabled || !adService.isBannerAdLoaded.value) {
+        return const SizedBox.shrink();
+      }
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+      // Use UniqueKey to ensure each AdWidget instance is treated as unique
+      return Container(
+        key: ValueKey('banner_ad_${adService.bannerAd.hashCode}'),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            height: 60,
+            child: AdWidget(
+              key: ValueKey('ad_widget_${adService.bannerAd.hashCode}'),
+              ad: adService.bannerAd!,
+            ),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(height: 60, child: AdWidget(ad: adService.bannerAd!)),
-      ),
-    );
+        ),
+      );
+    });
   }
 }

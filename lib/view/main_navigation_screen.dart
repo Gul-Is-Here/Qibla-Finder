@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../view/optimized_home_screen.dart';
 import '../view/prayer_times_screen.dart';
+import '../view/quran_list_screen.dart';
 import '../view/settings_screen.dart';
 
 class MainNavigationScreen extends StatelessWidget {
@@ -58,6 +59,11 @@ class MainNavigationScreen extends StatelessWidget {
                 label: 'Prayer Times',
               ),
               BottomNavigationBarItem(
+                icon: Icon(Icons.book_outlined),
+                activeIcon: Icon(Icons.book, size: 28),
+                label: 'Quran',
+              ),
+              BottomNavigationBarItem(
                 icon: Icon(Icons.settings),
                 activeIcon: Icon(Icons.settings, size: 28),
                 label: 'Settings',
@@ -76,6 +82,7 @@ class NavigationController extends GetxController {
   final List<Widget> screens = [
     const OptimizedHomeScreen(),
     const PrayerTimesScreen(),
+    const QuranListScreen(),
     const SettingsScreen(),
   ];
 
