@@ -12,6 +12,8 @@ class MainNavigationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(NavigationController());
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
 
     return Scaffold(
       body: Obx(
@@ -26,8 +28,8 @@ class MainNavigationScreen extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
+                blurRadius: isTablet ? 15 : 10,
+                offset: Offset(0, isTablet ? -3 : -2),
               ),
             ],
           ),
@@ -39,33 +41,34 @@ class MainNavigationScreen extends StatelessWidget {
             selectedItemColor: const Color(0xFF8BC34A),
             unselectedItemColor: Colors.white60,
             selectedLabelStyle: GoogleFonts.poppins(
-              fontSize: 12,
+              fontSize: isTablet ? 14 : 12,
               fontWeight: FontWeight.w600,
             ),
             unselectedLabelStyle: GoogleFonts.poppins(
-              fontSize: 11,
+              fontSize: isTablet ? 12 : 11,
               fontWeight: FontWeight.w400,
             ),
             elevation: 0,
-            items: const [
+            iconSize: isTablet ? 26 : 24,
+            items: [
               BottomNavigationBarItem(
-                icon: Icon(Icons.explore),
-                activeIcon: Icon(Icons.explore, size: 28),
+                icon: const Icon(Icons.explore),
+                activeIcon: Icon(Icons.explore, size: isTablet ? 32 : 28),
                 label: 'Qibla',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.access_time),
-                activeIcon: Icon(Icons.access_time, size: 28),
+                icon: const Icon(Icons.access_time),
+                activeIcon: Icon(Icons.access_time, size: isTablet ? 32 : 28),
                 label: 'Prayer Times',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.book_outlined),
-                activeIcon: Icon(Icons.book, size: 28),
+                icon: const Icon(Icons.book_outlined),
+                activeIcon: Icon(Icons.book, size: isTablet ? 32 : 28),
                 label: 'Quran',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.settings),
-                activeIcon: Icon(Icons.settings, size: 28),
+                icon: const Icon(Icons.settings),
+                activeIcon: Icon(Icons.settings, size: isTablet ? 32 : 28),
                 label: 'Settings',
               ),
             ],

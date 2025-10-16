@@ -3,47 +3,30 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
 import 'bindings/qibla_binding.dart';
-import 'controller/qibla_controller.dart';
-import 'controller/quran_controller.dart';
 import 'routes/app_pages.dart';
-import 'services/ad_service.dart';
-import 'services/connectivity_service.dart';
-import 'services/location_service.dart';
-import 'services/performance_service.dart';
 import 'services/notification_service.dart';
-import 'services/app_update_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize GetStorage
-  await GetStorage.init();
+  try {
+    // Initialize essential services with timeout protection for physical devices
+    await GetStorage.init().timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        print('GetStorage init timeout - continuing anyway');
+        return false;
+      },
+    );
 
-  // Initialize Notification Service
-  await NotificationService.instance.initialize();
+    // Initialize Notification Service and request permissions immediately
+    await NotificationService.instance.initialize();
 
-  // Initialize services
-  Get.put(PerformanceService());
-  Get.put(AdService());
-  Get.put(LocationService());
-  Get.put(ConnectivityService());
-  Get.put(AppUpdateService());
-  Get.put(QuranController());
-  Get.put(
-    QiblaController(
-      locationService: Get.find(),
-      connectivityService: Get.find(),
-    ),
-  );
-
-  // Check for app updates after a short delay (silent auto-update)
-  Future.delayed(const Duration(seconds: 3), () {
-    try {
-      AppUpdateService.instance.checkForUpdate();
-    } catch (e) {
-      print('Update check failed: $e');
-    }
-  });
+    // Request notification permissions immediately on app start
+    await NotificationService.instance.requestPermissions();
+  } catch (e) {
+    print('Main initialization error: $e - continuing with app startup');
+  }
 
   runApp(const MyApp());
 }

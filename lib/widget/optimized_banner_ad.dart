@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../services/ad_service.dart';
 
@@ -34,34 +35,15 @@ class _OptimizedBannerAdWidgetState extends State<OptimizedBannerAdWidget> {
       return;
     }
 
-    // Get the appropriate ad unit ID directly from AdService static getters
-    final adUnitId = widget.isBottomBanner
-        ? AdService.bottomBannerAdUnitId
-        : AdService.bannerAdUnitId;
-
-    _localBannerAd = BannerAd(
-      adUnitId: adUnitId,
-      size: AdSize.banner,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (ad) {
-          if (mounted) {
-            setState(() {
-              // Ad loaded successfully
-            });
-          }
-        },
-        onAdFailedToLoad: (ad, error) {
-          ad.dispose();
-          if (mounted) {
-            setState(() {
-              _localBannerAd = null;
-            });
-          }
-        },
-      ),
+    // Create a unique banner ad instance using AdService
+    final adService = Get.find<AdService>();
+    _localBannerAd = adService.createUniqueBannerAd(
+      customKey: widget.key.toString(),
     );
-    _localBannerAd?.load();
+
+    if (_localBannerAd != null) {
+      _localBannerAd!.load();
+    }
   }
 
   @override

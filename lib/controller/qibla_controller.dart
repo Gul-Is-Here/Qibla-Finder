@@ -68,8 +68,41 @@ class QiblaController extends GetxController {
     super.onInit();
     _loadPreferences();
     _initCompass();
-    _initLocation();
-    _initConnectivity();
+    // Initialize connectivity and location in background to prevent blocking
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initConnectivity();
+      _checkLocationPermissionStatus();
+    });
+  }
+
+  void _checkLocationPermissionStatus() async {
+    try {
+      // Add longer timeout for physical devices
+      LocationPermission permission = await Geolocator.checkPermission()
+          .timeout(
+            const Duration(seconds: 8),
+            onTimeout: () => LocationPermission.denied,
+          );
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        // Permission already granted, initialize location with delay for physical devices
+        Future.delayed(const Duration(milliseconds: 500), () {
+          try {
+            _initLocation();
+          } catch (e) {
+            print('Location initialization error: $e');
+          }
+        });
+      } else {
+        // Permission not granted, show message but don't auto-request
+        locationError.value = 'Tap Recalibrate to enable location';
+      }
+    } catch (e) {
+      print('Location permission check error: ${e.toString()}');
+      locationError.value = 'Location not available';
+      // Don't block the app even if location fails
+    }
   }
 
   void _loadPreferences() {
@@ -148,24 +181,18 @@ class QiblaController extends GetxController {
       // Check location service
       if (!await Geolocator.isLocationServiceEnabled()) {
         locationError.value = 'Location services are disabled';
-        _showErrorSnackbar(locationError.value);
         return;
       }
 
-      // Check permissions
+      // Check permissions without auto-requesting
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          locationError.value = 'Location permissions denied';
-          _showErrorSnackbar(locationError.value);
-          return;
-        }
+        locationError.value = 'Location permission needed';
+        return;
       }
 
       if (permission == LocationPermission.deniedForever) {
-        locationError.value = 'Location permissions permanently denied';
-        _showErrorSnackbar(locationError.value);
+        locationError.value = 'Enable location in settings';
         return;
       }
 
@@ -210,20 +237,30 @@ class QiblaController extends GetxController {
   }
 
   void _initConnectivity() async {
-    isOnline.value = await connectivityService.hasConnection();
+    try {
+      // Use timeout to prevent hanging
+      isOnline.value = await connectivityService.hasConnection().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => false,
+      );
 
-    _connectivitySubscription = connectivityService.connectionStream.listen(
-      (status) {
-        isOnline.value = status;
-        if (status) {
-          // When coming online, refresh location
-          _initLocation();
-        }
-      },
-      onError: (error) {
-        _showErrorSnackbar('Connectivity error: ${error.toString()}');
-      },
-    );
+      _connectivitySubscription = connectivityService.connectionStream.listen(
+        (status) {
+          isOnline.value = status;
+          if (status) {
+            // When coming online, refresh location
+            _initLocation();
+          }
+        },
+        onError: (error) {
+          print('Connectivity error: ${error.toString()}');
+          isOnline.value = false;
+        },
+      );
+    } catch (e) {
+      print('Connectivity initialization error: ${e.toString()}');
+      isOnline.value = false;
+    }
     update(); // Force UI update
   }
 
@@ -250,9 +287,37 @@ class QiblaController extends GetxController {
     update();
   }
 
-  void retryLocation() {
+  void retryLocation() async {
     locationError.value = '';
-    _initLocation();
+
+    try {
+      // Check location service
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        locationError.value = 'Please enable location services';
+        return;
+      }
+
+      // Check and request permissions when user manually triggers
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          locationError.value = 'Location permission denied';
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        locationError.value = 'Enable location in device settings';
+        return;
+      }
+
+      // Now initialize location with permission granted
+      _initLocation();
+    } catch (e) {
+      locationError.value = 'Failed to get location';
+    }
+
     update(); // Force UI update
   }
 

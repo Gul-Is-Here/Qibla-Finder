@@ -1,11 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:intl/intl.dart';
 import '../controller/prayer_times_controller.dart';
 import '../services/ad_service.dart';
+import '../services/notification_service.dart';
 import '../widget/shimmer_loading_widgets.dart';
 import 'notification_settings_screen.dart';
 
@@ -47,6 +49,165 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     );
 
     _fadeController.forward();
+
+    // Request notification permission when screen loads
+    _requestNotificationPermissionIfNeeded();
+  }
+
+  Future<void> _requestNotificationPermissionIfNeeded() async {
+    final storage = GetStorage();
+    final hasAskedPermission =
+        storage.read('notification_permission_asked') ?? false;
+
+    // Only ask once
+    if (!hasAskedPermission) {
+      // Wait a bit for UI to settle
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Check if already granted
+      final notificationService = NotificationService.instance;
+      final isAllowed = await notificationService.areNotificationsEnabled();
+
+      if (!isAllowed) {
+        // Show a friendly dialog first
+        _showNotificationPermissionDialog();
+      }
+
+      // Mark as asked
+      await storage.write('notification_permission_asked', true);
+    }
+  }
+
+  void _showNotificationPermissionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.notifications_active, color: primary, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Enable Prayer Notifications',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Never miss a prayer time!',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Get notified with beautiful Azan at each prayer time:',
+              style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
+            ),
+            const SizedBox(height: 8),
+            _buildFeatureItem('🌅 Fajr - Dawn prayer'),
+            _buildFeatureItem('☀️ Dhuhr - Noon prayer'),
+            _buildFeatureItem('🌤️ Asr - Afternoon prayer'),
+            _buildFeatureItem('🌅 Maghrib - Sunset prayer'),
+            _buildFeatureItem('🌙 Isha - Night prayer'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: primary, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Works offline with 60+ days of prayer times',
+                      style: GoogleFonts.poppins(fontSize: 12, color: primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // User declined, they can enable later from settings
+            },
+            child: Text(
+              'Not Now',
+              style: GoogleFonts.poppins(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _requestNotificationPermission();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              'Enable Notifications',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    final notificationService = NotificationService.instance;
+    final controller = Get.find<PrayerTimesController>();
+
+    final allowed = await notificationService.requestPermissions();
+
+    if (allowed) {
+      controller.notificationsEnabled.value = true;
+      // Enable notifications in controller
+      await controller.enableNotifications();
+    }
   }
 
   @override
@@ -914,38 +1075,47 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
   Widget _buildBannerAd() {
     final adService = Get.find<AdService>();
 
-    return Obx(() {
-      // Check if ads are disabled for store or if banner is not loaded
-      if (AdService.areAdsDisabled || !adService.isBannerAdLoaded.value) {
-        return const SizedBox.shrink();
-      }
+    // Check if ads are disabled for store
+    if (AdService.areAdsDisabled) {
+      return const SizedBox.shrink();
+    }
 
-      // Use UniqueKey to ensure each AdWidget instance is treated as unique
-      return Container(
-        key: ValueKey('banner_ad_${adService.bannerAd.hashCode}'),
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: SizedBox(
-            height: 60,
-            child: AdWidget(
-              key: ValueKey('ad_widget_${adService.bannerAd.hashCode}'),
-              ad: adService.bannerAd!,
-            ),
+    // Create a unique banner ad for this screen
+    final uniqueBannerAd = adService.createUniqueBannerAd(
+      customKey: 'prayer_times_banner',
+    );
+
+    if (uniqueBannerAd == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Load the ad
+    uniqueBannerAd.load();
+
+    return Container(
+      key: ValueKey('prayer_banner_ad_${uniqueBannerAd.hashCode}'),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          height: 60,
+          child: AdWidget(
+            key: ValueKey('prayer_ad_widget_${uniqueBannerAd.hashCode}'),
+            ad: uniqueBannerAd,
           ),
         ),
-      );
-    });
+      ),
+    );
   }
 }

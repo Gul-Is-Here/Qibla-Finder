@@ -37,12 +37,21 @@ class NotificationService {
           playSound: false,
           enableVibration: false,
         ),
+        NotificationChannel(
+          channelKey: 'qibla_reminder',
+          channelName: 'Qibla Reminders',
+          channelDescription: 'Reminders for prayer direction',
+          defaultColor: const Color(0xFF004D40),
+          importance: NotificationImportance.Default,
+          playSound: true,
+          enableVibration: true,
+        ),
       ],
       debug: true,
     );
 
-    // Request notification permissions
-    await requestPermissions();
+    // NOTE: Notification permissions are now requested when user visits Prayer Times screen
+    // This provides better UX and higher opt-in rates
 
     // Set up notification listeners
     _setupListeners();
@@ -158,11 +167,11 @@ class NotificationService {
         '${prayerTime.hour.toString().padLeft(2, '0')}:${prayerTime.minute.toString().padLeft(2, '0')}';
 
     final messages = {
-      'Fajr': 'Begin your day with peace. Time for Fajr prayer at $timeStr',
-      'Dhuhr': 'Take a break and pray. Dhuhr time at $timeStr',
-      'Asr': 'Afternoon prayer time. Asr at $timeStr',
-      'Maghrib': 'Sunset prayer time. Maghrib at $timeStr',
-      'Isha': 'End your day with devotion. Isha at $timeStr',
+      'Fajr': ' Time for Fajr prayer at $timeStr',
+      'Dhuhr': ' Dhuhr time at $timeStr',
+      'Asr': ' Asr at $timeStr',
+      'Maghrib': ' Maghrib at $timeStr',
+      'Isha': ' Isha at $timeStr',
     };
 
     return messages[prayerName] ??

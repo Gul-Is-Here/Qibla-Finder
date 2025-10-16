@@ -568,15 +568,6 @@ class NotificationSettingsScreen extends StatelessWidget {
             onPressed: () async {
               Navigator.of(context).pop();
               await controller.sendTestNotification();
-              Get.snackbar(
-                '⏱️ Test Scheduled',
-                'Notification will appear in 5 seconds',
-                backgroundColor: const Color(0xFF00332F),
-                colorText: Colors.white,
-                icon: const Icon(Icons.schedule, color: Colors.white),
-                snackPosition: SnackPosition.BOTTOM,
-                duration: const Duration(seconds: 3),
-              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF00332F),
@@ -628,15 +619,6 @@ class NotificationSettingsScreen extends StatelessWidget {
             onPressed: () async {
               Navigator.of(context).pop();
               await controller.clearAllNotifications();
-              Get.snackbar(
-                '✅ Cleared',
-                'All scheduled notifications have been cancelled',
-                backgroundColor: Colors.red,
-                colorText: Colors.white,
-                icon: const Icon(Icons.delete_sweep, color: Colors.white),
-                snackPosition: SnackPosition.BOTTOM,
-                duration: const Duration(seconds: 3),
-              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

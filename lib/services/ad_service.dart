@@ -138,6 +138,30 @@ class AdService extends GetxController {
   BannerAd? get bannerAd => _bannerAd;
   BannerAd? get bottomBannerAd => _bottomBannerAd;
 
+  // Create a new unique banner ad instance for each widget
+  BannerAd? createUniqueBannerAd({String? customKey}) {
+    if (_disableAdsForStore) {
+      return null;
+    }
+
+    return BannerAd(
+      adUnitId: _bannerAdUnitId,
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          print('Unique banner ad loaded: ${ad.hashCode}');
+        },
+        onAdFailedToLoad: (ad, error) {
+          print('Unique banner ad failed to load: $error');
+          ad.dispose();
+        },
+        onAdOpened: (ad) => print('Unique banner ad opened'),
+        onAdClosed: (ad) => print('Unique banner ad closed'),
+      ),
+    );
+  }
+
   // Load Bottom Banner Ad
   void _loadBottomBannerAd() {
     // Don't load ads if disabled for store submission
