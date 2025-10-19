@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../model/quran_model.dart';
+import '../models/quran_model.dart';
 
 /// Service to fetch Quran data from Alquran Cloud API
 /// API Documentation: https://alquran.cloud/api
@@ -51,17 +51,14 @@ class QuranService {
   }) async {
     try {
       // Get Arabic text
-      final arabicResponse = await http.get(
-        Uri.parse('$baseUrl/surah/$surahNumber'),
-      );
+      final arabicResponse = await http.get(Uri.parse('$baseUrl/surah/$surahNumber'));
 
       // Get translation
       final translationResponse = await http.get(
         Uri.parse('$baseUrl/surah/$surahNumber/$translationEdition'),
       );
 
-      if (arabicResponse.statusCode == 200 &&
-          translationResponse.statusCode == 200) {
+      if (arabicResponse.statusCode == 200 && translationResponse.statusCode == 200) {
         final arabicData = json.decode(arabicResponse.body);
         final translationData = json.decode(translationResponse.body);
 
@@ -101,11 +98,7 @@ class QuranService {
   }
 
   /// Get continuous audio for entire surah
-  List<String> getSurahAudio(
-    int surahNumber,
-    int numberOfAyahs, {
-    String reciter = 'ar.alafasy',
-  }) {
+  List<String> getSurahAudio(int surahNumber, int numberOfAyahs, {String reciter = 'ar.alafasy'}) {
     List<String> audioUrls = [];
     for (int i = 1; i <= numberOfAyahs; i++) {
       audioUrls.add(getAyahAudio(surahNumber, i, reciter: reciter));

@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qibla_compass_offline/widget/compass_widget.dart';
 
-import '../controller/qibla_controller.dart';
+import '../controllers/qibla_controller.dart';
 import '../routes/app_pages.dart';
 import '../services/ad_service.dart';
 import '../services/performance_service.dart';
-import '../widget/simple_compass_widget.dart';
-import '../widget/customized_drawer.dart';
-import '../widget/optimized_banner_ad.dart';
+import '../widgets/compass_widget.dart';
+import '../widgets/customized_drawer.dart';
+import '../widgets/optimized_banner_ad.dart';
+
 
 class OptimizedHomeScreen extends StatelessWidget {
   const OptimizedHomeScreen({super.key});

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../view/optimized_home_screen.dart';
-import '../view/prayer_times_screen.dart';
-import '../view/quran_list_screen.dart';
-import '../view/settings_screen.dart';
+import 'package:qibla_compass_offline/views/optimized_home_screen.dart' show OptimizedHomeScreen;
+
+import 'prayer_times_screen.dart';
+import 'quran_list_screen.dart';
+import 'settings_screen.dart';
 
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});

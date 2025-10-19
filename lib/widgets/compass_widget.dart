@@ -3,9 +3,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qibla_compass_offline/controller/qibla_controller.dart';
 
 import '../constants/strings.dart';
+import '../controllers/qibla_controller.dart';
 
 class CompassWidget extends StatelessWidget {
   final QiblaController controller;

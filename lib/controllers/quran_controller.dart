@@ -6,7 +6,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
-import '../model/quran_model.dart';
+import '../models/quran_model.dart';
 import '../services/quran_service.dart';
 
 // Simple audio handler for background playback
@@ -154,8 +154,7 @@ class QuranController extends GetxController {
     _audioPlayer.positionStream.listen((position) {
       currentDuration.value = position;
       if (totalDuration.value.inMilliseconds > 0) {
-        audioProgress.value =
-            position.inMilliseconds / totalDuration.value.inMilliseconds;
+        audioProgress.value = position.inMilliseconds / totalDuration.value.inMilliseconds;
       }
     });
 
@@ -186,11 +185,7 @@ class QuranController extends GetxController {
   }
 
   /// Check if audio is cached
-  Future<bool> _isAudioCached(
-    int surahNumber,
-    int ayahNumber,
-    String reciter,
-  ) async {
+  Future<bool> _isAudioCached(int surahNumber, int ayahNumber, String reciter) async {
     if (_cacheDir == null) return false;
     final file = File(_getCachedAudioPath(surahNumber, ayahNumber, reciter));
     return await file.exists();
@@ -237,11 +232,7 @@ class QuranController extends GetxController {
       surahs.value = await _quranService.getAllSurahs();
     } catch (e) {
       errorMessage.value = 'Error loading surahs: $e';
-      Get.snackbar(
-        'Error',
-        'Failed to load surahs',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      Get.snackbar('Error', 'Failed to load surahs', snackPosition: SnackPosition.BOTTOM);
     } finally {
       isLoading.value = false;
     }
@@ -268,11 +259,7 @@ class QuranController extends GetxController {
       _preDownloadSurahAudio(surahNumber);
     } catch (e) {
       errorMessage.value = 'Error loading surah: $e';
-      Get.snackbar(
-        'Error',
-        'Failed to load surah',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      Get.snackbar('Error', 'Failed to load surah', snackPosition: SnackPosition.BOTTOM);
     } finally {
       isLoading.value = false;
     }
@@ -406,11 +393,7 @@ class QuranController extends GetxController {
       }
     } catch (e) {
       isDownloadingAudio.value = false;
-      Get.snackbar(
-        'Error',
-        'Failed to play audio: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      Get.snackbar('Error', 'Failed to play audio: $e', snackPosition: SnackPosition.BOTTOM);
     }
   }
 

@@ -3,13 +3,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qibla_compass_offline/constants/strings.dart';
-import 'package:qibla_compass_offline/view/main_navigation_screen.dart';
-import 'package:qibla_compass_offline/view/optimized_home_screen.dart';
 
-import '../view/about_screen.dart';
-import '../view/feedback_screen.dart';
-import '../view/home_screen.dart';
-import '../view/settings_screen.dart' show SettingsScreen;
+
+
+import '../views/about_screen.dart';
+import '../views/main_navigation_screen.dart';
 import 'drawer_item.dart';
 
 Widget buildDrawer(BuildContext context) {

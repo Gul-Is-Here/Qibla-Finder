@@ -3,6 +3,9 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
 import 'bindings/qibla_binding.dart';
+import 'core/config/app_config.dart';
+import 'core/theme/app_theme.dart';
+import 'core/utils/logger.dart';
 import 'routes/app_pages.dart';
 import 'services/notification_service.dart';
 
@@ -12,9 +15,9 @@ void main() async {
   try {
     // Initialize essential services with timeout protection for physical devices
     await GetStorage.init().timeout(
-      const Duration(seconds: 15),
+      AppConfig.storageTimeout,
       onTimeout: () {
-        print('GetStorage init timeout - continuing anyway');
+        Logger.warning('GetStorage init timeout - continuing anyway', tag: 'MAIN');
         return false;
       },
     );
@@ -24,8 +27,13 @@ void main() async {
 
     // Request notification permissions immediately on app start
     await NotificationService.instance.requestPermissions();
-  } catch (e) {
-    print('Main initialization error: $e - continuing with app startup');
+  } catch (e, stackTrace) {
+    Logger.error(
+      'Main initialization error - continuing with app startup',
+      tag: 'MAIN',
+      error: e,
+      stackTrace: stackTrace,
+    );
   }
 
   runApp(const MyApp());
@@ -37,62 +45,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'Qibla Compass',
+      title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF8BC34A),
-          secondary: Color(0xFF4CAF50),
-          surface: Color(0xFF00332F),
-          background: Color(0xFF00332F),
-          onPrimary: Colors.white,
-          onSecondary: Colors.white,
-          onSurface: Colors.white,
-          onBackground: Colors.white,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF00332F),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF00332F),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white.withOpacity(0.1),
-          elevation: 8,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF8BC34A),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        switchTheme: SwitchThemeData(
-          thumbColor: MaterialStateProperty.resolveWith<Color?>((
-            Set<MaterialState> states,
-          ) {
-            if (states.contains(MaterialState.selected)) {
-              return const Color(0xFF8BC34A);
-            }
-            return Colors.grey;
-          }),
-          trackColor: MaterialStateProperty.resolveWith<Color?>((
-            Set<MaterialState> states,
-          ) {
-            if (states.contains(MaterialState.selected)) {
-              return const Color(0xFF8BC34A).withOpacity(0.5);
-            }
-            return Colors.grey.withOpacity(0.3);
-          }),
-        ),
-      ),
+      theme: AppTheme.darkTheme,
       initialRoute: Routes.SPLASH,
       getPages: AppPages.routes,
       initialBinding: QiblaBinding(),

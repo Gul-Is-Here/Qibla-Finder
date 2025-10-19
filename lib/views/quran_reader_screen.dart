@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../controller/quran_controller.dart';
-import '../widget/shimmer_loading_widgets.dart';
+
+import '../controllers/quran_controller.dart';
+import '../widgets/shimmer_loading_widgets.dart';
 
 class QuranReaderScreen extends StatelessWidget {
   const QuranReaderScreen({super.key});

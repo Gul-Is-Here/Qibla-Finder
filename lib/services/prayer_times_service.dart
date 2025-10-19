@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:get_storage/get_storage.dart';
-import '../model/prayer_times_model.dart';
+import '../models/prayer_times_model.dart';
 
 class PrayerTimesService {
   static const String baseUrl = 'https://api.aladhan.com/v1';
@@ -18,9 +18,7 @@ class PrayerTimesService {
       final timestamp = targetDate.millisecondsSinceEpoch ~/ 1000;
 
       final response = await http.get(
-        Uri.parse(
-          '$baseUrl/timings/$timestamp?latitude=$latitude&longitude=$longitude&method=2',
-        ),
+        Uri.parse('$baseUrl/timings/$timestamp?latitude=$latitude&longitude=$longitude&method=2'),
       );
 
       if (response.statusCode == 200) {
@@ -51,9 +49,7 @@ class PrayerTimesService {
       final timestamp = targetDate.millisecondsSinceEpoch ~/ 1000;
 
       final response = await http.get(
-        Uri.parse(
-          '$baseUrl/timingsByCity/$timestamp?city=$city&country=$country&method=2',
-        ),
+        Uri.parse('$baseUrl/timingsByCity/$timestamp?city=$city&country=$country&method=2'),
       );
 
       if (response.statusCode == 200) {
@@ -97,10 +93,7 @@ class PrayerTimesService {
   }
 
   // Cache prayer times locally
-  Future<void> _cachePrayerTimes(
-    PrayerTimesModel prayerTimes,
-    DateTime date,
-  ) async {
+  Future<void> _cachePrayerTimes(PrayerTimesModel prayerTimes, DateTime date) async {
     final key = 'prayer_times_${date.year}_${date.month}_${date.day}';
     await storage.write(key, {
       'fajr': prayerTimes.fajr,

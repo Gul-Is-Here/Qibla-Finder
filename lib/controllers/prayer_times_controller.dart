@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import '../model/prayer_times_model.dart';
+import '../models/prayer_times_model.dart';
 import '../services/prayer_times_service.dart';
 import '../services/location_service.dart';
 import '../services/prayer_times_database.dart';
@@ -40,8 +40,7 @@ class PrayerTimesController extends GetxController {
   }
 
   Future<void> _checkNotificationStatus() async {
-    notificationsEnabled.value = await _notificationService
-        .areNotificationsEnabled();
+    notificationsEnabled.value = await _notificationService.areNotificationsEnabled();
   }
 
   Future<void> enableNotifications() async {
@@ -97,15 +96,10 @@ class PrayerTimesController extends GetxController {
       } else {
         // Load from database (offline mode)
         final dateStr = _formatDate(selectedDate.value);
-        times = await _database.getPrayerTimes(
-          dateStr,
-          position.latitude,
-          position.longitude,
-        );
+        times = await _database.getPrayerTimes(dateStr, position.latitude, position.longitude);
 
         if (times == null) {
-          errorMessage.value =
-              'No offline data available. Please connect to internet.';
+          errorMessage.value = 'No offline data available. Please connect to internet.';
         } else {
           locationName.value = times.location ?? 'Unknown Location';
         }
@@ -166,10 +160,7 @@ class PrayerTimesController extends GetxController {
         );
 
         // Fetch next month as well
-        final nextMonth = DateTime(
-          selectedDate.value.year,
-          selectedDate.value.month + 1,
-        );
+        final nextMonth = DateTime(selectedDate.value.year, selectedDate.value.month + 1);
 
         final nextMonthTimes = await _prayerTimesService.getMonthlyPrayerTimes(
           latitude: currentLocation.value!.latitude,
@@ -378,11 +369,9 @@ class PrayerTimesController extends GetxController {
 
         if (place.locality != null && place.locality!.isNotEmpty) {
           name = place.locality!;
-        } else if (place.subAdministrativeArea != null &&
-            place.subAdministrativeArea!.isNotEmpty) {
+        } else if (place.subAdministrativeArea != null && place.subAdministrativeArea!.isNotEmpty) {
           name = place.subAdministrativeArea!;
-        } else if (place.administrativeArea != null &&
-            place.administrativeArea!.isNotEmpty) {
+        } else if (place.administrativeArea != null && place.administrativeArea!.isNotEmpty) {
           name = place.administrativeArea!;
         }
 

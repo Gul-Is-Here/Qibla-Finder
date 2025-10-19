@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import '../model/prayer_times_model.dart';
+import '../models/prayer_times_model.dart';
 
 class PrayerTimesDatabase {
   static final PrayerTimesDatabase instance = PrayerTimesDatabase._init();
@@ -72,11 +72,7 @@ class PrayerTimesDatabase {
       'location_name': locationName,
     };
 
-    return await db.insert(
-      'prayer_times',
-      data,
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    return await db.insert('prayer_times', data, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // Insert multiple prayer times (for monthly data)
@@ -106,28 +102,19 @@ class PrayerTimesDatabase {
         'location_name': locationName,
       };
 
-      batch.insert(
-        'prayer_times',
-        data,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('prayer_times', data, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
     await batch.commit(noResult: true);
   }
 
   // Get prayer times for a specific date and location
-  Future<PrayerTimesModel?> getPrayerTimes(
-    String date,
-    double latitude,
-    double longitude,
-  ) async {
+  Future<PrayerTimesModel?> getPrayerTimes(String date, double latitude, double longitude) async {
     final db = await database;
 
     final maps = await db.query(
       'prayer_times',
-      where:
-          'date = ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
+      where: 'date = ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
       whereArgs: [date, latitude, longitude],
       limit: 1,
     );
@@ -149,13 +136,8 @@ class PrayerTimesDatabase {
 
     final maps = await db.query(
       'prayer_times',
-      where:
-          'date LIKE ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
-      whereArgs: [
-        '$year-${month.toString().padLeft(2, '0')}-%',
-        latitude,
-        longitude,
-      ],
+      where: 'date LIKE ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
+      whereArgs: ['$year-${month.toString().padLeft(2, '0')}-%', latitude, longitude],
       orderBy: 'date ASC',
     );
 
@@ -173,14 +155,8 @@ class PrayerTimesDatabase {
 
     final maps = await db.query(
       'prayer_times',
-      where:
-          'date >= ? AND date <= ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
-      whereArgs: [
-        _formatDate(startDate),
-        _formatDate(endDate),
-        latitude,
-        longitude,
-      ],
+      where: 'date >= ? AND date <= ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
+      whereArgs: [_formatDate(startDate), _formatDate(endDate), latitude, longitude],
       orderBy: 'date ASC',
     );
 
@@ -188,23 +164,13 @@ class PrayerTimesDatabase {
   }
 
   // Check if we have data for a specific date range
-  Future<bool> hasDataForMonth(
-    int year,
-    int month,
-    double latitude,
-    double longitude,
-  ) async {
+  Future<bool> hasDataForMonth(int year, int month, double latitude, double longitude) async {
     final db = await database;
 
     final result = await db.query(
       'prayer_times',
-      where:
-          'date LIKE ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
-      whereArgs: [
-        '$year-${month.toString().padLeft(2, '0')}-%',
-        latitude,
-        longitude,
-      ],
+      where: 'date LIKE ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
+      whereArgs: ['$year-${month.toString().padLeft(2, '0')}-%', latitude, longitude],
       limit: 1,
     );
 

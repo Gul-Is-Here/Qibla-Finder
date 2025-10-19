@@ -1,13 +1,13 @@
 import 'package:get/get.dart';
-import '../view/about_screen.dart';
-import '../view/feedback_screen.dart';
-import '../view/main_navigation_screen.dart';
-import '../view/optimized_home_screen.dart';
-import '../view/prayer_times_screen.dart';
-import '../view/quran_list_screen.dart';
-import '../view/quran_reader_screen.dart';
-import '../view/settings_screen.dart';
-import '../view/splash_screen.dart';
+import '../views/about_screen.dart';
+import '../views/feedback_screen.dart';
+import '../views/main_navigation_screen.dart';
+import '../views/optimized_home_screen.dart';
+import '../views/prayer_times_screen.dart';
+import '../views/quran_list_screen.dart';
+import '../views/quran_reader_screen.dart';
+import '../views/settings_screen.dart';
+import '../views/splash_screen.dart';
 
 abstract class Routes {
   static const SPLASH = '/splash';

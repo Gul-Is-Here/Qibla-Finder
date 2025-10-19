@@ -2,7 +2,7 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:just_audio/just_audio.dart';
-import '../model/prayer_times_model.dart';
+import '../models/prayer_times_model.dart';
 import '../routes/app_pages.dart';
 
 class NotificationService {
@@ -60,8 +60,7 @@ class NotificationService {
   Future<bool> requestPermissions() async {
     bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
     if (!isAllowed) {
-      isAllowed = await AwesomeNotifications()
-          .requestPermissionToSendNotifications();
+      isAllowed = await AwesomeNotifications().requestPermissionToSendNotifications();
     }
     return isAllowed;
   }
@@ -77,9 +76,7 @@ class NotificationService {
   }
 
   @pragma("vm:entry-point")
-  static Future<void> onNotificationCreatedMethod(
-    ReceivedNotification receivedNotification,
-  ) async {
+  static Future<void> onNotificationCreatedMethod(ReceivedNotification receivedNotification) async {
     print('Notification created: ${receivedNotification.id}');
   }
 
@@ -96,17 +93,13 @@ class NotificationService {
   }
 
   @pragma("vm:entry-point")
-  static Future<void> onDismissActionReceivedMethod(
-    ReceivedAction receivedAction,
-  ) async {
+  static Future<void> onDismissActionReceivedMethod(ReceivedAction receivedAction) async {
     print('Notification dismissed: ${receivedAction.id}');
     await _stopAzan();
   }
 
   @pragma("vm:entry-point")
-  static Future<void> onActionReceivedMethod(
-    ReceivedAction receivedAction,
-  ) async {
+  static Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
     print('Notification action: ${receivedAction.buttonKeyPressed}');
 
     // Handle navigation when notification is tapped
@@ -158,11 +151,7 @@ class NotificationService {
   }
 
   // Get beautiful notification body with time formatting
-  String _getNotificationBody(
-    String prayerName,
-    DateTime prayerTime,
-    String? locationName,
-  ) {
+  String _getNotificationBody(String prayerName, DateTime prayerTime, String? locationName) {
     final timeStr =
         '${prayerTime.hour.toString().padLeft(2, '0')}:${prayerTime.minute.toString().padLeft(2, '0')}';
 
@@ -174,8 +163,7 @@ class NotificationService {
       'Isha': ' Isha at $timeStr',
     };
 
-    return messages[prayerName] ??
-        'It\'s time for $prayerName prayer at $timeStr';
+    return messages[prayerName] ?? 'It\'s time for $prayerName prayer at $timeStr';
   }
 
   // Schedule notification for a specific prayer
