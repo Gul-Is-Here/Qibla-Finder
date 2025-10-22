@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qibla_compass_offline/views/optimized_home_screen.dart' show OptimizedHomeScreen;
+import 'package:qibla_compass_offline/views/compass_screen.dart' show OptimizedHomeScreen;
 
+import 'enhanced_islamic_features_screen.dart';
 import 'prayer_times_screen.dart';
 import 'quran_list_screen.dart';
 import 'settings_screen.dart';
@@ -18,10 +19,7 @@ class MainNavigationScreen extends StatelessWidget {
 
     return Scaffold(
       body: Obx(
-        () => IndexedStack(
-          index: controller.selectedIndex.value,
-          children: controller.screens,
-        ),
+        () => IndexedStack(index: controller.selectedIndex.value, children: controller.screens),
       ),
       bottomNavigationBar: Obx(
         () => Container(
@@ -68,10 +66,15 @@ class MainNavigationScreen extends StatelessWidget {
                 label: 'Quran',
               ),
               BottomNavigationBarItem(
-                icon: const Icon(Icons.settings),
-                activeIcon: Icon(Icons.settings, size: isTablet ? 32 : 28),
-                label: 'Settings',
+                icon: const Icon(Icons.star_outline),
+                activeIcon: Icon(Icons.star, size: isTablet ? 32 : 28),
+                label: 'Islamic',
               ),
+              // BottomNavigationBarItem(
+              //   icon: const Icon(Icons.settings),
+              //   activeIcon: Icon(Icons.settings, size: isTablet ? 32 : 28),
+              //   label: 'Settings',
+              // ),
             ],
           ),
         ),
@@ -84,10 +87,11 @@ class NavigationController extends GetxController {
   var selectedIndex = 0.obs;
 
   final List<Widget> screens = [
-    const OptimizedHomeScreen(),
+    OptimizedHomeScreen(),
     const PrayerTimesScreen(),
     const QuranListScreen(),
-    const SettingsScreen(),
+    const EnhancedIslamicFeaturesScreen(),
+    // const SettingsScreen(),
   ];
 
   void changePage(int index) {

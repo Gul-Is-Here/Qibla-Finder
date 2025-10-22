@@ -13,24 +13,20 @@ class QiblaController extends GetxController {
   final LocationService locationService;
   final ConnectivityService connectivityService;
 
-  QiblaController({
-    required this.locationService,
-    required this.connectivityService,
-  });
+  QiblaController({required this.locationService, required this.connectivityService});
 
   // Kaaba coordinates
   static const double kaabaLat = 21.422487;
   static const double kaabaLng = 39.826206;
   bool hasVibrated = false;
   // List of Qibla icons
-  static const List<String> qiblaIconsList = [
-    "assets/icons/qibla1.png",
-    "assets/icons/qibla2.png",
-  ];
+  static const List<String> qiblaIconsList = ["assets/icons/qibla1.png", "assets/icons/qibla2.png"];
 
   // Observables
   var heading = 0.0.obs;
   var qiblaAngle = 0.0.obs;
+  var manualQiblaAngle = 0.0.obs; // For manual Qibla direction when no location
+  var useManualQibla = false.obs; // Flag to use manual Qibla angle
   var currentLocation = Position(
     latitude: 0,
     longitude: 0,
@@ -68,6 +64,8 @@ class QiblaController extends GetxController {
     super.onInit();
     _loadPreferences();
     _initCompass();
+    // Initialize Qibla with manual angle (will be overridden if location becomes available)
+    _calculateQiblaDirection();
     // Initialize connectivity and location in background to prevent blocking
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initConnectivity();
@@ -78,14 +76,12 @@ class QiblaController extends GetxController {
   void _checkLocationPermissionStatus() async {
     try {
       // Add longer timeout for physical devices
-      LocationPermission permission = await Geolocator.checkPermission()
-          .timeout(
-            const Duration(seconds: 8),
-            onTimeout: () => LocationPermission.denied,
-          );
+      LocationPermission permission = await Geolocator.checkPermission().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () => LocationPermission.denied,
+      );
 
-      if (permission == LocationPermission.whileInUse ||
-          permission == LocationPermission.always) {
+      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
         // Permission already granted, initialize location with delay for physical devices
         Future.delayed(const Duration(milliseconds: 500), () {
           try {
@@ -114,6 +110,9 @@ class QiblaController extends GetxController {
     // Load vibration and sound settings
     isVibrationEnabled.value = storage.read('isVibrationEnabled') ?? true;
     isSoundEnabled.value = storage.read('isSoundEnabled') ?? false;
+
+    // Load manual Qibla angle (default to 0 degrees - North)
+    manualQiblaAngle.value = storage.read('manualQiblaAngle') ?? 0.0;
   }
 
   // Toggle methods for settings
@@ -125,6 +124,20 @@ class QiblaController extends GetxController {
   void toggleSound(bool value) {
     isSoundEnabled.value = value;
     storage.write('isSoundEnabled', value);
+  }
+
+  // Manual Qibla angle adjustment methods
+  void setManualQiblaAngle(double angle) {
+    manualQiblaAngle.value = (angle + 360) % 360;
+    storage.write('manualQiblaAngle', manualQiblaAngle.value);
+    if (!locationReady.value) {
+      _calculateQiblaDirection(); // Update display
+    }
+    update();
+  }
+
+  void adjustManualQiblaAngle(double delta) {
+    setManualQiblaAngle(manualQiblaAngle.value + delta);
   }
 
   void _initCompass() {
@@ -142,8 +155,7 @@ class QiblaController extends GetxController {
         lastUpdateTime.value = DateTime.now();
 
         // Check compass accuracy
-        calibrationNeeded.value =
-            event.accuracy != null && event.accuracy! <= 0.3;
+        calibrationNeeded.value = event.accuracy != null && event.accuracy! <= 0.3;
 
         if (!compassReady.value) {
           compassReady.value = true;
@@ -265,8 +277,15 @@ class QiblaController extends GetxController {
   }
 
   void _calculateQiblaDirection() {
-    if (!locationReady.value) return;
+    if (!locationReady.value) {
+      // Use manual Qibla angle when location is not available
+      useManualQibla.value = true;
+      qiblaAngle.value = manualQiblaAngle.value;
+      return;
+    }
 
+    // Location is available, calculate accurate Qibla
+    useManualQibla.value = false;
     final double lat = currentLocation.value.latitude;
     final double lng = currentLocation.value.longitude;
 
@@ -278,10 +297,7 @@ class QiblaController extends GetxController {
     final double psi =
         180.0 /
         pi *
-        atan2(
-          sin(lambdaK - lambda),
-          cos(phi) * tan(phiK) - sin(phi) * cos(lambdaK - lambda),
-        );
+        atan2(sin(lambdaK - lambda), cos(phi) * tan(phiK) - sin(phi) * cos(lambdaK - lambda));
 
     qiblaAngle.value = (psi + 360) % 360; // Normalize to 0-360 degrees
     update();

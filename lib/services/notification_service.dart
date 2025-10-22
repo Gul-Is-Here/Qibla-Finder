@@ -188,6 +188,7 @@ class NotificationService {
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: id,
+
         channelKey: 'prayer_channel',
         title: '$emoji $prayerName Prayer Time',
         body: body,
@@ -205,20 +206,18 @@ class NotificationService {
           'location': locationName ?? '',
         },
         criticalAlert: true,
-        roundedLargeIcon: true,
-        largeIcon: 'resource://drawable/ic_launcher',
       ),
       actionButtons: [
         NotificationActionButton(
           key: 'STOP_AZAN',
-          label: '🔇 Stop Azan',
+          label: 'Mute',
           color: Colors.red,
           autoDismissible: true,
           actionType: ActionType.Default,
         ),
         NotificationActionButton(
           key: 'MARK_PRAYED',
-          label: '✓ Prayed',
+          label: 'Prayed',
           color: const Color(0xFF00897B),
           autoDismissible: true,
           actionType: ActionType.Default,
@@ -227,7 +226,7 @@ class NotificationService {
       schedule: NotificationCalendar.fromDate(date: prayerTime),
     );
 
-    print('✓ Scheduled $prayerName notification for $prayerTime (ID: $id)');
+    print('Scheduled $prayerName notification for $prayerTime (ID: $id)');
   }
 
   // Schedule all prayers for a specific day

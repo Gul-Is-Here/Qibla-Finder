@@ -11,11 +11,7 @@ class CompassWidget extends StatelessWidget {
   final QiblaController controller;
   final double compassSize;
 
-  const CompassWidget({
-    super.key,
-    required this.controller,
-    required this.compassSize,
-  });
+  const CompassWidget({super.key, required this.controller, required this.compassSize});
 
   @override
   Widget build(BuildContext context) {
@@ -44,12 +40,7 @@ class CompassWidget extends StatelessWidget {
               alignment: Alignment.center,
               clipBehavior: Clip.none,
               children: [
-                Image.asset(
-                  circle,
-                  width: ringSize,
-                  height: ringSize,
-                  fit: BoxFit.contain,
-                ),
+                Image.asset(circle, width: ringSize, height: ringSize, fit: BoxFit.contain),
                 Transform.rotate(
                   angle: compassRotation,
                   child: SizedBox(
@@ -64,7 +55,7 @@ class CompassWidget extends StatelessWidget {
                     offset: Offset(0, indicatorOffset),
                     child: Image.asset(
                       qiblaIcons3,
-                      height: compassSize * 0.12,
+                      height: compassSize * 0.1,
                       width: compassSize * 0.12,
                     ),
                   ),
