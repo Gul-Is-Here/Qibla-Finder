@@ -1,19 +1,20 @@
 import 'package:get/get.dart';
-import '../views/about_screen.dart';
-import '../views/dhikr_counter_screen.dart';
-import '../views/dua_collection_screen.dart';
-import '../views/enhanced_mosque_finder_screen.dart';
-import '../views/enhanced_islamic_features_screen.dart';
-import '../views/feedback_screen.dart';
-import '../views/islamic_calendar_screen.dart';
-import '../views/islamic_features_index_screen.dart';
+import 'package:qibla_compass_offline/views/Prayers_views/prayer_times_screen.dart';
+
+import '../views/home_view/Diker/dhikr_counter_screen.dart';
+import '../views/home_view/dua_view/dua_collection_screen.dart';
+import '../views/home_view/mosque_view/enhanced_mosque_finder_screen.dart';
+import '../views/home_view/common_view/enhanced_islamic_features_screen.dart';
+
+import '../views/home_view/common_view/islamic_calendar_screen.dart';
+import '../views/home_view/common_view/islamic_features_index_screen.dart';
 import '../views/main_navigation_screen.dart';
-import '../views/names_of_allah_screen.dart';
-import '../views/compass_screen.dart';
-import '../views/prayer_times_screen.dart';
-import '../views/quran_list_screen.dart';
-import '../views/quran_reader_screen.dart';
-import '../views/settings_screen.dart';
+import '../views/home_view/common_view/names_of_allah_screen.dart';
+import '../views/Compass_view/compass_screen.dart';
+// import '../views/home_view/dua_view/Prayers_views/prayer_times_screen.dart';
+import '../views/Quran_views/quran_list_screen.dart';
+import '../views/Quran_views/quran_reader_screen.dart';
+import '../views/settings_views/settings_screen.dart';
 import '../views/splash_screen.dart';
 
 abstract class Routes {
@@ -44,9 +45,7 @@ class AppPages {
     GetPage(name: Routes.PRAYER_TIMES, page: () => const PrayerTimesScreen()),
     GetPage(name: Routes.QURAN_LIST, page: () => const QuranListScreen()),
     GetPage(name: Routes.QURAN_READER, page: () => const QuranReaderScreen()),
-    GetPage(name: Routes.ABOUT, page: () => const AboutScreen()),
     GetPage(name: Routes.SETTINGS, page: () => const SettingsScreen()),
-    GetPage(name: Routes.FEEDBACK, page: () => const FeedbackScreen()),
     // New Islamic features
     GetPage(name: Routes.ISLAMIC_CALENDAR, page: () => const IslamicCalendarScreen()),
     GetPage(name: Routes.DUA_COLLECTION, page: () => const DuaCollectionScreen()),

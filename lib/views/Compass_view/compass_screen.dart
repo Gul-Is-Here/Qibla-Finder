@@ -5,12 +5,12 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../controllers/compass_controller/qibla_controller.dart';
+import '../../controllers/compass_controller/qibla_controller.dart';
 import '../../routes/app_pages.dart';
 import '../../services/ads/ad_service.dart';
 import '../../services/performance_service.dart';
-import '../widgets/compass_widget/compass_widget.dart';
-import '../widgets/ads_widget/optimized_banner_ad.dart';
+import '../../widgets/compass_widget/compass_widget.dart';
+import '../../widgets/ads_widget/optimized_banner_ad.dart';
 
 class OptimizedHomeScreen extends StatelessWidget {
   OptimizedHomeScreen({super.key});
@@ -187,15 +187,12 @@ class OptimizedHomeScreen extends StatelessWidget {
 
                         const SizedBox(height: 26),
 
-                        // _compassShell(
-                        //   size: min(size.width, size.height * 0.36).clamp(240, 360).toDouble(),
-                        //   child:
                         CompassWidget(
                               controller: controller,
                               compassSize: min(
                                 size.width,
-                                size.height * 0.35,
-                              ).clamp(220, 340).toDouble(),
+                                size.height * 0.3,
+                              ).clamp(220, 300).toDouble(),
                             )
                             .animate(onPlay: (c) => c.repeat())
                             .shimmer(
@@ -203,7 +200,6 @@ class OptimizedHomeScreen extends StatelessWidget {
                               colors: [Colors.transparent, Colors.white12, Colors.transparent],
                             ),
 
-                        // ),
                         const SizedBox(height: 20),
 
                         Obx(
@@ -223,9 +219,9 @@ class OptimizedHomeScreen extends StatelessWidget {
                           () => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             decoration: BoxDecoration(
-                              color: Colors.red,
+                              color: panel,
                               borderRadius: BorderRadius.circular(12),
-                              // border: Border.all(color: stroke),
+                              border: Border.all(color: stroke),
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -421,27 +417,6 @@ class OptimizedHomeScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _compassShell({required double size, required Widget child}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0x0DFFFFFF),
-        border: Border.all(color: stroke, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: child,
     );
   }
 

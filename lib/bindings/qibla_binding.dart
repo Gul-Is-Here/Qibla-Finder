@@ -1,10 +1,10 @@
 import 'package:get/get.dart';
 
-import '../controllers/qibla_controller.dart';
-import '../controllers/quran_controller.dart';
-import '../services/ad_service.dart';
-import '../services/connectivity_service.dart';
-import '../services/location_service.dart';
+import '../controllers/compass_controller/qibla_controller.dart';
+import '../controllers/quran_controller/quran_controller.dart';
+import '../services/ads/ad_service.dart';
+import '../services/connectivity/connectivity_service.dart';
+import '../services/location/location_service.dart';
 import '../services/performance_service.dart';
 
 class QiblaBinding implements Bindings {

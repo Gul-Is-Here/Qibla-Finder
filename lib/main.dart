@@ -7,7 +7,7 @@ import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/logger.dart';
 import 'routes/app_pages.dart';
-import 'services/notification_service.dart';
+import 'services/notifications/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,11 +22,9 @@ void main() async {
       },
     );
 
-    // Initialize Notification Service and request permissions immediately
+    // Initialize Notification Service only (without requesting permissions yet)
+    // Permissions will be requested after the app UI is ready
     await NotificationService.instance.initialize();
-
-    // Request notification permissions immediately on app start
-    await NotificationService.instance.requestPermissions();
   } catch (e, stackTrace) {
     Logger.error(
       'Main initialization error - continuing with app startup',
@@ -39,8 +37,31 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Request notification permissions after the widget tree is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestNotificationPermissions();
+    });
+  }
+
+  Future<void> _requestNotificationPermissions() async {
+    try {
+      await NotificationService.instance.requestPermissions();
+      Logger.info('Notification permissions requested', tag: 'MAIN');
+    } catch (e) {
+      Logger.warning('Failed to request notification permissions: $e', tag: 'MAIN');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

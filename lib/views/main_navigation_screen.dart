@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qibla_compass_offline/views/compass_screen.dart' show OptimizedHomeScreen;
+import 'package:qibla_compass_offline/views/Compass_view/compass_screen.dart' show OptimizedHomeScreen;
 
-import 'enhanced_islamic_features_screen.dart';
-import 'prayer_times_screen.dart';
-import 'quran_list_screen.dart';
-import 'settings_screen.dart';
+import 'home_view/common_view/enhanced_islamic_features_screen.dart';
+import 'Prayers_views/prayer_times_screen.dart';
+import 'Quran_views/quran_list_screen.dart';
+import 'settings_views/settings_screen.dart';
 
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
