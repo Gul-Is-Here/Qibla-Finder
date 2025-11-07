@@ -13,7 +13,7 @@ class _DuaCollectionScreenState extends State<DuaCollectionScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  Color get primary => const Color(0xFF00332F);
+  Color get primary => const Color(0xFF8F66FF);
 
   // Dua collections from open source Islamic resources
   final List<Map<String, dynamic>> _morningDuas = [
@@ -102,7 +102,7 @@ class _DuaCollectionScreenState extends State<DuaCollectionScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFE8E4F3),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: primary,

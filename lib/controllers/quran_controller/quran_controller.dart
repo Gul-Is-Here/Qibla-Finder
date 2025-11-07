@@ -133,6 +133,9 @@ class QuranController extends GetxController {
   final ScrollController scrollController = ScrollController();
   AudioHandler? _audioHandler;
 
+  // Public getter for QuranService
+  QuranService get quranService => _quranService;
+
   // Observable state
   var isLoading = false.obs;
   var errorMessage = ''.obs;
@@ -153,6 +156,10 @@ class QuranController extends GetxController {
   // Per-surah download tracking
   var downloadingStatus = <int, bool>{}.obs; // surahNumber -> isDownloading
   var downloadingProgress = <int, double>{}.obs; // surahNumber -> progress
+
+  // Last read tracking (reactive)
+  var lastReadSurah = 1.obs;
+  var lastReadAyah = 1.obs;
 
   // Reciters and translations
   final reciters = <Map<String, String>>[].obs;
@@ -176,6 +183,13 @@ class QuranController extends GetxController {
     loadSurahs();
     reciters.value = _quranService.getReciters();
     translations.value = _quranService.getTranslations();
+
+    // Load last read position from storage
+    lastReadSurah.value = storage.read('lastReadSurah') ?? 1;
+    lastReadAyah.value = storage.read('lastReadAyah') ?? 1;
+
+    // Add scroll listener to track current ayah while reading
+    _setupScrollListener();
   }
 
   @override
@@ -185,6 +199,37 @@ class QuranController extends GetxController {
     _audioHandler?.stop();
     super.onClose();
   }
+
+  /// Setup scroll listener to track currently visible ayah
+  void _setupScrollListener() {
+    scrollController.addListener(() {
+      if (!scrollController.hasClients || currentQuranData.value == null) return;
+
+      // Update last read ayah based on scroll position every 2 seconds to avoid too many updates
+      final now = DateTime.now();
+      if (_lastScrollUpdate != null && now.difference(_lastScrollUpdate!).inSeconds < 2) {
+        return;
+      }
+      _lastScrollUpdate = now;
+
+      // Calculate which ayah is currently visible based on scroll position
+      final ayahs = currentQuranData.value!.ayahs;
+      if (ayahs.isEmpty) return;
+
+      // Estimate visible ayah based on scroll percentage
+      final scrollPercent = scrollController.offset / scrollController.position.maxScrollExtent;
+      final visibleAyahIndex = (scrollPercent * ayahs.length).floor().clamp(0, ayahs.length - 1);
+      final visibleAyahNumber = ayahs[visibleAyahIndex].numberInSurah;
+
+      // Update last read position if changed
+      if (lastReadAyah.value != visibleAyahNumber) {
+        final surahNumber = currentQuranData.value!.surah.number;
+        updateLastRead(surahNumber, visibleAyahNumber);
+      }
+    });
+  }
+
+  DateTime? _lastScrollUpdate;
 
   /// Initialize audio service for background playback
   Future<void> _initializeAudioService() async {
@@ -324,6 +369,19 @@ class QuranController extends GetxController {
     } finally {
       isLoading.value = false;
     }
+  }
+
+  /// Update last read position (both storage and reactive variables)
+  void updateLastRead(int surahNumber, int ayahNumber) {
+    // Update reactive variables (triggers UI rebuild)
+    lastReadSurah.value = surahNumber;
+    lastReadAyah.value = ayahNumber;
+
+    // Save to persistent storage
+    storage.write('lastReadSurah', surahNumber);
+    storage.write('lastReadAyah', ayahNumber);
+
+    print('📖 Updated last read: Surah $surahNumber, Ayah $ayahNumber');
   }
 
   /// Load a specific surah with translation
@@ -506,6 +564,9 @@ class QuranController extends GetxController {
 
       currentAyahIndex.value = ayahIndex;
       final ayah = quranData.ayahs[ayahIndex];
+
+      // Update last read position when playing an ayah
+      updateLastRead(quranData.surah.number, ayah.numberInSurah);
 
       // Check if audio is cached
       final isCached = await _isAudioCached(

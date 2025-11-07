@@ -155,4 +155,153 @@ class QuranService {
       {'id': 'ur.jalandhry', 'name': 'Urdu - Fateh Muhammad Jalandhry'},
     ];
   }
+
+  /// Get Juz (Para) data - There are 30 Juz in the Quran
+  Future<List<Map<String, dynamic>>> getAllJuz() async {
+    // Juz information with starting surah and ayah
+    final juzData = [
+      {'number': 1, 'startSurah': 1, 'startAyah': 1, 'endSurah': 2, 'endAyah': 141},
+      {'number': 2, 'startSurah': 2, 'startAyah': 142, 'endSurah': 2, 'endAyah': 252},
+      {'number': 3, 'startSurah': 2, 'startAyah': 253, 'endSurah': 3, 'endAyah': 92},
+      {'number': 4, 'startSurah': 3, 'startAyah': 93, 'endSurah': 4, 'endAyah': 23},
+      {'number': 5, 'startSurah': 4, 'startAyah': 24, 'endSurah': 4, 'endAyah': 147},
+      {'number': 6, 'startSurah': 4, 'startAyah': 148, 'endSurah': 5, 'endAyah': 81},
+      {'number': 7, 'startSurah': 5, 'startAyah': 82, 'endSurah': 6, 'endAyah': 110},
+      {'number': 8, 'startSurah': 6, 'startAyah': 111, 'endSurah': 7, 'endAyah': 87},
+      {'number': 9, 'startSurah': 7, 'startAyah': 88, 'endSurah': 8, 'endAyah': 40},
+      {'number': 10, 'startSurah': 8, 'startAyah': 41, 'endSurah': 9, 'endAyah': 92},
+      {'number': 11, 'startSurah': 9, 'startAyah': 93, 'endSurah': 11, 'endAyah': 5},
+      {'number': 12, 'startSurah': 11, 'startAyah': 6, 'endSurah': 12, 'endAyah': 52},
+      {'number': 13, 'startSurah': 12, 'startAyah': 53, 'endSurah': 14, 'endAyah': 52},
+      {'number': 14, 'startSurah': 15, 'startAyah': 1, 'endSurah': 16, 'endAyah': 128},
+      {'number': 15, 'startSurah': 17, 'startAyah': 1, 'endSurah': 18, 'endAyah': 74},
+      {'number': 16, 'startSurah': 18, 'startAyah': 75, 'endSurah': 20, 'endAyah': 135},
+      {'number': 17, 'startSurah': 21, 'startAyah': 1, 'endSurah': 22, 'endAyah': 78},
+      {'number': 18, 'startSurah': 23, 'startAyah': 1, 'endSurah': 25, 'endAyah': 20},
+      {'number': 19, 'startSurah': 25, 'startAyah': 21, 'endSurah': 27, 'endAyah': 55},
+      {'number': 20, 'startSurah': 27, 'startAyah': 56, 'endSurah': 29, 'endAyah': 45},
+      {'number': 21, 'startSurah': 29, 'startAyah': 46, 'endSurah': 33, 'endAyah': 30},
+      {'number': 22, 'startSurah': 33, 'startAyah': 31, 'endSurah': 36, 'endAyah': 27},
+      {'number': 23, 'startSurah': 36, 'startAyah': 28, 'endSurah': 39, 'endAyah': 31},
+      {'number': 24, 'startSurah': 39, 'startAyah': 32, 'endSurah': 41, 'endAyah': 46},
+      {'number': 25, 'startSurah': 41, 'startAyah': 47, 'endSurah': 45, 'endAyah': 37},
+      {'number': 26, 'startSurah': 46, 'startAyah': 1, 'endSurah': 51, 'endAyah': 30},
+      {'number': 27, 'startSurah': 51, 'startAyah': 31, 'endSurah': 57, 'endAyah': 29},
+      {'number': 28, 'startSurah': 58, 'startAyah': 1, 'endSurah': 66, 'endAyah': 12},
+      {'number': 29, 'startSurah': 67, 'startAyah': 1, 'endSurah': 77, 'endAyah': 50},
+      {'number': 30, 'startSurah': 78, 'startAyah': 1, 'endSurah': 114, 'endAyah': 6},
+    ];
+
+    return juzData;
+  }
+
+  /// Get specific Juz data
+  Future<Map<String, dynamic>> getJuz(int juzNumber) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/juz/$juzNumber'));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['code'] == 200 && data['status'] == 'OK') {
+          return data['data'];
+        }
+      }
+      throw Exception('Failed to load juz');
+    } catch (e) {
+      print('Error fetching juz: $e');
+      rethrow;
+    }
+  }
+
+  /// Get Page data - There are 604 pages in the Quran
+  Future<Map<String, dynamic>> getPage(int pageNumber) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/page/$pageNumber'));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['code'] == 200 && data['status'] == 'OK') {
+          return data['data'];
+        }
+      }
+      throw Exception('Failed to load page');
+    } catch (e) {
+      print('Error fetching page: $e');
+      rethrow;
+    }
+  }
+
+  /// Get all pages list (1-604)
+  List<Map<String, dynamic>> getAllPages() {
+    List<Map<String, dynamic>> pages = [];
+    for (int i = 1; i <= 604; i++) {
+      pages.add({'number': i, 'juz': _getJuzForPage(i)});
+    }
+    return pages;
+  }
+
+  /// Get Juz number for a specific page
+  int _getJuzForPage(int pageNumber) {
+    if (pageNumber <= 21) return 1;
+    if (pageNumber <= 41) return 2;
+    if (pageNumber <= 61) return 3;
+    if (pageNumber <= 81) return 4;
+    if (pageNumber <= 101) return 5;
+    if (pageNumber <= 121) return 6;
+    if (pageNumber <= 141) return 7;
+    if (pageNumber <= 161) return 8;
+    if (pageNumber <= 181) return 9;
+    if (pageNumber <= 201) return 10;
+    if (pageNumber <= 221) return 11;
+    if (pageNumber <= 241) return 12;
+    if (pageNumber <= 261) return 13;
+    if (pageNumber <= 281) return 14;
+    if (pageNumber <= 301) return 15;
+    if (pageNumber <= 321) return 16;
+    if (pageNumber <= 341) return 17;
+    if (pageNumber <= 361) return 18;
+    if (pageNumber <= 381) return 19;
+    if (pageNumber <= 401) return 20;
+    if (pageNumber <= 421) return 21;
+    if (pageNumber <= 441) return 22;
+    if (pageNumber <= 461) return 23;
+    if (pageNumber <= 481) return 24;
+    if (pageNumber <= 501) return 25;
+    if (pageNumber <= 521) return 26;
+    if (pageNumber <= 541) return 27;
+    if (pageNumber <= 561) return 28;
+    if (pageNumber <= 581) return 29;
+    return 30;
+  }
+
+  /// Get Hijb data - There are 240 Hizbs in the Quran (60 Hizbs per quarter)
+  List<Map<String, dynamic>> getAllHizbs() {
+    List<Map<String, dynamic>> hizbs = [];
+    for (int i = 1; i <= 240; i++) {
+      hizbs.add({
+        'number': i,
+        'juz': ((i - 1) ~/ 8) + 1, // 8 hizbs per juz
+        'quarter': ((i - 1) % 8) + 1,
+      });
+    }
+    return hizbs;
+  }
+
+  /// Get specific Hizb data
+  Future<Map<String, dynamic>> getHizb(int hizbNumber) async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/hizbQuarter/$hizbNumber'));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['code'] == 200 && data['status'] == 'OK') {
+          return data['data'];
+        }
+      }
+      throw Exception('Failed to load hizb');
+    } catch (e) {
+      print('Error fetching hizb: $e');
+      rethrow;
+    }
+  }
 }

@@ -86,8 +86,11 @@ class PrayerTimesDatabase {
     final batch = db.batch();
 
     for (var prayerTimes in prayerTimesList) {
+      // Convert date from "25 October 2025" to "2025-10-25" format
+      final normalizedDate = _normalizeDate(prayerTimes.date);
+
       final data = {
-        'date': prayerTimes.date,
+        'date': normalizedDate,
         'fajr': prayerTimes.fajr,
         'sunrise': prayerTimes.sunrise,
         'dhuhr': prayerTimes.dhuhr,
@@ -106,6 +109,41 @@ class PrayerTimesDatabase {
     }
 
     await batch.commit(noResult: true);
+  }
+
+  // Convert date from "25 October 2025" to "2025-10-25" format
+  String _normalizeDate(String dateStr) {
+    try {
+      // Parse "25 October 2025" format
+      final parts = dateStr.split(' ');
+      if (parts.length != 3) return dateStr;
+
+      final day = int.parse(parts[0]);
+      final year = int.parse(parts[2]);
+
+      final monthMap = {
+        'January': 1,
+        'February': 2,
+        'March': 3,
+        'April': 4,
+        'May': 5,
+        'June': 6,
+        'July': 7,
+        'August': 8,
+        'September': 9,
+        'October': 10,
+        'November': 11,
+        'December': 12,
+      };
+
+      final month = monthMap[parts[1]] ?? 1;
+
+      // Return in "YYYY-MM-DD" format
+      return '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
+    } catch (e) {
+      print('⚠️ Error normalizing date "$dateStr": $e');
+      return dateStr;
+    }
   }
 
   // Get prayer times for a specific date and location

@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:get_storage/get_storage.dart';
 import '../../models/prayer_model/prayer_times_model.dart';
 import '../../services/Prayer/prayer_times_service.dart';
 import '../../services/location/location_service.dart';
@@ -102,11 +103,70 @@ class PrayerTimesController extends GetxController {
     }
   }
 
+  // Enable all prayer notifications when permission is granted
+  Future<void> enableAllPrayerNotifications() async {
+    print('🔔 enableAllPrayerNotifications: Starting...');
+    final storage = GetStorage();
+
+    // Update the notification enabled flag FIRST
+    notificationsEnabled.value = true;
+
+    // Enable all prayer notifications
+    await storage.write('fajr_enabled', true);
+    await storage.write('dhuhr_enabled', true);
+    await storage.write('asr_enabled', true);
+    await storage.write('maghrib_enabled', true);
+    await storage.write('isha_enabled', true);
+    await storage.write('notifications_enabled', true);
+
+    print('🔔 enableAllPrayerNotifications: Settings saved to storage');
+    print('🔔 Monthly prayer times count: ${monthlyPrayerTimes.length}');
+
+    // If monthly prayer times not yet loaded, trigger fetch and wait
+    if (monthlyPrayerTimes.isEmpty) {
+      print('⏳ Monthly prayer times not loaded, triggering fetch...');
+
+      // Trigger the fetch in background if location is available
+      if (currentLocation.value != null) {
+        print('🔔 Fetching monthly prayer times...');
+        await fetchAndCacheMonthlyPrayerTimes();
+        print('✅ Monthly prayer times fetch completed: ${monthlyPrayerTimes.length} days');
+      } else {
+        print('⚠️ No location available, waiting for it...');
+        // Wait up to 5 seconds for location and data
+        for (int i = 0; i < 10; i++) {
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (monthlyPrayerTimes.isNotEmpty) {
+            print('✅ Prayer times loaded after ${(i + 1) * 500}ms');
+            break;
+          }
+        }
+      }
+    }
+
+    // Schedule all notifications
+    if (monthlyPrayerTimes.isNotEmpty) {
+      print('🔔 Calling _scheduleAllNotifications with ${monthlyPrayerTimes.length} days...');
+      await _scheduleAllNotifications();
+      print('🔔 _scheduleAllNotifications completed');
+    } else {
+      print('⚠️ No monthly prayer times available to schedule after all attempts');
+      print('⚠️ Notifications will be scheduled automatically when prayer times are fetched');
+    }
+
+    print('✅ All prayer notifications enabled');
+  }
+
   Future<void> _scheduleAllNotifications() async {
+    print('🔔 _scheduleAllNotifications: Calling NotificationService...');
     await _notificationService.scheduleMonthlyPrayers(
       monthlyPrayerTimes: monthlyPrayerTimes,
       locationName: locationName.value,
     );
+    print('🔔 _scheduleAllNotifications: NotificationService call completed');
+
+    // Debug: Print all scheduled notifications
+    await _notificationService.printScheduledNotifications();
   }
 
   Future<void> fetchPrayerTimes({DateTime? date}) async {
@@ -387,8 +447,18 @@ class PrayerTimesController extends GetxController {
       lastSyncTime.value = DateTime.now();
 
       // Schedule notifications if enabled
+      print(
+        '🔔 _fetchAndSaveMonthlyPrayerTimes: notificationsEnabled = ${notificationsEnabled.value}',
+      );
+      print('🔔 _fetchAndSaveMonthlyPrayerTimes: allTimes.length = ${allTimes.length}');
+
       if (notificationsEnabled.value && allTimes.isNotEmpty) {
+        print('🔔 _fetchAndSaveMonthlyPrayerTimes: Scheduling notifications...');
         await _scheduleAllNotifications();
+      } else {
+        print(
+          '⚠️ _fetchAndSaveMonthlyPrayerTimes: NOT scheduling - notificationsEnabled=${notificationsEnabled.value}, hasData=${allTimes.isNotEmpty}',
+        );
       }
 
       // Clean up old data

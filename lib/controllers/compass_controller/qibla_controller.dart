@@ -208,31 +208,42 @@ class QiblaController extends GetxController {
         return;
       }
 
-      // Try to get current position
+      // First, try to get last known position immediately (instant offline mode)
+      Position? lastPosition = await locationService.getLastKnownPosition();
+      if (lastPosition != null) {
+        currentLocation.value = lastPosition;
+        locationReady.value = true;
+        locationError.value = 'Using offline mode';
+        _calculateQiblaDirection();
+        lastUpdateTime.value = DateTime.now();
+        print('✅ Instant offline mode activated');
+      }
+
+      // Then try to get current position (online or pure GPS)
       try {
-        currentLocation.value = await locationService.getCurrentPosition(
-          forceAndroidFusedLocation: isOnline.value,
-        );
+        currentLocation.value = await locationService
+            .getCurrentPosition(forceAndroidFusedLocation: isOnline.value)
+            .timeout(const Duration(seconds: 8));
+
+        locationReady.value = true;
+        locationError.value = '';
+        _calculateQiblaDirection();
+        lastUpdateTime.value = DateTime.now();
+        print('✅ Location updated (${isOnline.value ? "online" : "GPS"} mode)');
       } catch (e) {
-        // Fallback to last known position
-        Position? lastPosition = await locationService.getLastKnownPosition();
+        // If we already have last known position, just continue with it
         if (lastPosition != null) {
-          currentLocation.value = lastPosition;
-          locationError.value = 'Using last known location (offline mode)';
+          print('ℹ️ Continuing with offline mode: $e');
         } else {
           throw Exception('Could not get location');
         }
       }
 
-      locationReady.value = true;
-      locationError.value = '';
-      _calculateQiblaDirection();
-      lastUpdateTime.value = DateTime.now();
-
       // Start listening for location updates
       _locationSubscription = locationService.getPositionStream().listen(
         (position) {
           currentLocation.value = position;
+          locationReady.value = true;
           _calculateQiblaDirection();
           lastUpdateTime.value = DateTime.now();
         },

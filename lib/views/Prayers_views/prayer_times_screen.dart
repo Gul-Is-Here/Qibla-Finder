@@ -2,18 +2,19 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:intl/intl.dart';
 import 'package:qibla_compass_offline/controllers/prayer_controller/prayer_times_controller.dart';
-import 'package:qibla_compass_offline/views/home_view/common_view/islamic_calendar_screen.dart';
+
 import 'package:qibla_compass_offline/views/notification_views/notification_settings_screen.dart';
 
 import '../../../services/ads/ad_service.dart';
 import '../../../services/notifications/notification_service.dart';
 
 import '../../widgets/shimmer_widget/shimmer_loading_widgets.dart';
-
+import '../home_view/common_view/islamic_calendar_screen.dart';
 
 class PrayerTimesScreen extends StatefulWidget {
   const PrayerTimesScreen({super.key});
@@ -28,11 +29,11 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
   late Animation<double> _fadeAnimation;
   late Animation<double> _pulseAnimation;
 
-  // Banner ad instance
-  BannerAd? _bannerAd;
-  bool _isBannerAdLoaded = false;
-  bool _isDisposed = false;
+  // Native ad instance (replacing second banner)
+  NativeAd? _nativeAd;
+  bool _isNativeAdLoaded = false;
 
+  bool _isDisposed = false;
   @override
   void initState() {
     super.initState();
@@ -56,34 +57,237 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
     // Request notification permission when screen loads
     _requestNotificationPermissionIfNeeded();
 
-    // Initialize banner ad
-    _createBannerAd();
+    // Initialize native ad
+    _createNativeAd();
   }
 
   Future<void> _requestNotificationPermissionIfNeeded() async {
-    final storage = GetStorage();
-    final hasAskedPermission = storage.read('notification_permission_asked') ?? false;
-
-    // Only ask once
-    if (!hasAskedPermission) {
-      // Wait a bit for UI to settle
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Check if already granted
+    try {
+      final storage = GetStorage();
+      final hasAskedPermission = storage.read('notification_permission_asked') ?? false;
       final notificationService = NotificationService.instance;
       final isAllowed = await notificationService.areNotificationsEnabled();
 
-      if (!isAllowed) {
-        // Show a friendly dialog first
-        _showNotificationPermissionDialog();
+      print('DEBUG: hasAskedPermission = $hasAskedPermission');
+      print('DEBUG: isAllowed = $isAllowed');
+
+      // If notifications are already enabled, schedule them immediately
+      if (isAllowed && !hasAskedPermission) {
+        print('✅ Notifications already enabled, scheduling prayers...');
+        final controller = Get.find<PrayerTimesController>();
+
+        // Wait for prayer times to load if needed
+        print('🔔 Waiting for prayer times to load...');
+        for (int i = 0; i < 10; i++) {
+          if (controller.monthlyPrayerTimes.isNotEmpty) {
+            print('✅ Prayer times loaded (${controller.monthlyPrayerTimes.length} days)');
+            break;
+          }
+          await Future.delayed(const Duration(milliseconds: 500));
+          print('⏳ Still waiting... attempt ${i + 1}/10');
+        }
+
+        print('🔔 Calling enableAllPrayerNotifications...');
+        await controller.enableAllPrayerNotifications();
+        print('✅ enableAllPrayerNotifications completed');
+        await storage.write('notification_permission_asked', true);
+        return;
       }
 
-      // Mark as asked
-      await storage.write('notification_permission_asked', true);
+      // Only ask once
+      if (!hasAskedPermission) {
+        // Wait a bit for UI to settle
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        if (!isAllowed && mounted) {
+          // Directly request notification permission without showing dialog
+          await _requestNotificationPermission();
+        }
+
+        // Mark as asked
+        await storage.write('notification_permission_asked', true);
+      }
+    } catch (e) {
+      print('ERROR: Failed to request notification permission: $e');
     }
   }
 
-  void _showNotificationPermissionDialog() {
+  Future<void> _requestNotificationPermission() async {
+    final notificationService = NotificationService.instance;
+    final controller = Get.find<PrayerTimesController>();
+
+    final allowed = await notificationService.requestPermissions();
+
+    if (allowed) {
+      controller.notificationsEnabled.value = true;
+      // Enable all prayer notifications
+      await controller.enableAllPrayerNotifications();
+
+      // Show success message
+      Get.snackbar(
+        '✅ Notifications Enabled',
+        'All prayer notifications have been enabled',
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 2),
+        backgroundColor: primary,
+        colorText: Colors.white,
+      );
+
+      // Wait a moment, then ask for location permission
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _requestLocationPermission();
+    }
+  }
+
+  // Show all scheduled notifications for debugging
+  Future<void> _showScheduledNotifications() async {
+    try {
+      final notificationService = NotificationService.instance;
+      final notifications = await notificationService.getScheduledNotifications();
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.schedule, color: primary, size: 28),
+              const SizedBox(width: 12),
+              Text(
+                'Scheduled Notifications',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: primary,
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: notifications.isEmpty
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.notifications_off, size: 60, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No notifications scheduled',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Enable prayer notifications to get reminders',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: notifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = notifications[index];
+                      final content = notification.content;
+                      final schedule = notification.schedule;
+
+                      String scheduleInfo = 'Unknown time';
+                      if (schedule != null) {
+                        try {
+                          // Try to extract schedule date/time
+                          final scheduleStr = schedule.toString();
+                          scheduleInfo = scheduleStr;
+                        } catch (e) {
+                          scheduleInfo = 'Schedule info unavailable';
+                        }
+                      }
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: primary.withOpacity(0.1),
+                            child: Icon(Icons.notifications, color: primary, size: 20),
+                          ),
+                          title: Text(
+                            content?.title ?? 'No title',
+                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                content?.body ?? 'No body',
+                                style: GoogleFonts.poppins(fontSize: 12),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'ID: ${content?.id ?? 'N/A'}',
+                                style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
+                              ),
+                              Text(
+                                scheduleInfo,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color: primary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          isThreeLine: true,
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Close',
+                style: GoogleFonts.poppins(color: primary, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      print('❌ Error showing scheduled notifications: $e');
+      if (mounted) {
+        Get.snackbar(
+          'Error',
+          'Failed to fetch scheduled notifications: $e',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    }
+  }
+
+  Future<void> _requestLocationPermission() async {
+    // Check if location permission is already granted
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      // Show location permission dialog
+      _showLocationPermissionDialog();
+    } else {
+      // Permission already granted, fetch prayer times
+      final controller = Get.find<PrayerTimesController>();
+      await controller.fetchPrayerTimes();
+    }
+  }
+
+  void _showLocationPermissionDialog() {
+    if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -91,11 +295,11 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            Icon(Icons.notifications_active, color: primary, size: 28),
+            Icon(Icons.location_on, color: primary, size: 28),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Enable Prayer Notifications',
+                'Enable Location',
                 style: GoogleFonts.poppins(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -110,7 +314,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Never miss a prayer time!',
+              'Accurate Prayer Times for Your Location',
               style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -119,15 +323,9 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
             ),
             const SizedBox(height: 12),
             Text(
-              'Get notified with beautiful Azan at each prayer time:',
+              'We need your location to provide accurate prayer times based on your geographical position.',
               style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
             ),
-            const SizedBox(height: 8),
-            _buildFeatureItem('🌅 Fajr - Dawn prayer'),
-            _buildFeatureItem('☀️ Dhuhr - Noon prayer'),
-            _buildFeatureItem('🌤️ Asr - Afternoon prayer'),
-            _buildFeatureItem('🌅 Maghrib - Sunset prayer'),
-            _buildFeatureItem('🌙 Isha - Night prayer'),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -141,7 +339,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Works offline with 60+ days of prayer times',
+                      'Your location data is only used for prayer time calculation',
                       style: GoogleFonts.poppins(fontSize: 12, color: primary),
                     ),
                   ),
@@ -154,7 +352,13 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              // User declined, they can enable later from settings
+              // User declined location
+              Get.snackbar(
+                'ℹ️ Location Disabled',
+                'You can enable location later from the prayer screen',
+                snackPosition: SnackPosition.BOTTOM,
+                duration: const Duration(seconds: 3),
+              );
             },
             child: Text(
               'Not Now',
@@ -164,7 +368,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              await _requestNotificationPermission();
+              await _requestAndCheckLocationPermission();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: primary,
@@ -172,38 +376,45 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: Text(
-              'Enable Notifications',
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-            ),
+            child: Text('Enable Location', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFeatureItem(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          const SizedBox(width: 8),
-          Text(text, style: GoogleFonts.poppins(fontSize: 13, color: Colors.white)),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _requestNotificationPermission() async {
-    final notificationService = NotificationService.instance;
+  Future<void> _requestAndCheckLocationPermission() async {
     final controller = Get.find<PrayerTimesController>();
 
-    final allowed = await notificationService.requestPermissions();
+    try {
+      // Request location permission
+      LocationPermission permission = await Geolocator.requestPermission();
 
-    if (allowed) {
-      controller.notificationsEnabled.value = true;
-      // Enable notifications in controller
-      await controller.enableNotifications();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        // Permission denied
+        Get.snackbar(
+          '⚠️ Location Permission Denied',
+          'Please enable location from settings to get accurate prayer times',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+        );
+      } else {
+        // Permission granted, fetch prayer times
+        Get.snackbar(
+          '✅ Location Enabled',
+          'Fetching accurate prayer times for your location',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+          backgroundColor: primary,
+          colorText: Colors.white,
+        );
+        await controller.fetchPrayerTimes();
+      }
+    } catch (e) {
+      print('Error requesting location permission: $e');
     }
   }
 
@@ -212,60 +423,105 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
     _isDisposed = true;
     _fadeController.dispose();
     _pulseController.dispose();
-    // Safely dispose banner ad
-    if (_bannerAd != null) {
-      _bannerAd!.dispose();
-      _bannerAd = null;
+    // Safely dispose native ad
+    if (_nativeAd != null) {
+      _nativeAd!.dispose();
+      _nativeAd = null;
     }
     super.dispose();
   }
 
-  void _createBannerAd() {
+  void _createNativeAd() {
     if (AdService.areAdsDisabled || _isDisposed) {
+      print(
+        '🚫 Native ad creation skipped: ${AdService.areAdsDisabled ? "Ads disabled" : "Widget disposed"}',
+      );
       return;
     }
 
     // Dispose existing ad first to prevent conflicts
-    if (_bannerAd != null) {
-      _bannerAd!.dispose();
-      _bannerAd = null;
-      _isBannerAdLoaded = false;
+    if (_nativeAd != null) {
+      print('🗑️ Disposing existing native ad');
+      _nativeAd!.dispose();
+      _nativeAd = null;
+      if (mounted) {
+        setState(() {
+          _isNativeAdLoaded = false;
+        });
+      }
     }
 
-    final adService = Get.find<AdService>();
-    _bannerAd = adService.createUniqueBannerAd(
-      customKey: 'prayer_times_${DateTime.now().millisecondsSinceEpoch}',
-    );
+    try {
+      final adService = Get.find<AdService>();
+      final ad = adService.createUniqueNativeAd(
+        customKey: 'prayer_times_native_${DateTime.now().millisecondsSinceEpoch}',
+      );
 
-    if (_bannerAd != null && !_isDisposed) {
-      _bannerAd!
+      if (ad == null) {
+        print('❌ Failed to create native ad - AdService returned null');
+        return;
+      }
+
+      print('🔄 Native ad created, starting load...');
+
+      // Set up the ad BEFORE calling load
+      _nativeAd = ad;
+
+      // Now load the ad
+      ad
           .load()
           .then((_) {
-            if (mounted && _bannerAd != null && !_isDisposed) {
+            print('✅ Native ad loaded successfully - ID: ${ad.hashCode}');
+            if (mounted && _nativeAd != null && _nativeAd == ad && !_isDisposed) {
               setState(() {
-                _isBannerAdLoaded = true;
+                _isNativeAdLoaded = true;
               });
+              print('✅ Native ad state updated to loaded');
+            } else {
+              print(
+                '⚠️ Native ad loaded but widget state changed: mounted=$mounted, disposed=$_isDisposed',
+              );
+              ad.dispose();
             }
           })
           .catchError((error) {
-            print('Banner ad failed to load: $error');
-            if (_bannerAd != null && !_isDisposed) {
-              _bannerAd!.dispose();
-              _bannerAd = null;
+            print('❌ Native ad failed to load: $error');
+            print('❌ Error type: ${error.runtimeType}');
+            print('❌ Error details: ${error.toString()}');
+
+            if (_nativeAd != null && _nativeAd == ad && !_isDisposed) {
+              _nativeAd!.dispose();
+              _nativeAd = null;
             }
+
             if (mounted && !_isDisposed) {
               setState(() {
-                _isBannerAdLoaded = false;
+                _isNativeAdLoaded = false;
               });
             }
           });
+    } catch (e, stackTrace) {
+      print('❌ Exception creating native ad: $e');
+      print('❌ Stack trace: $stackTrace');
+
+      if (_nativeAd != null && !_isDisposed) {
+        _nativeAd!.dispose();
+        _nativeAd = null;
+      }
+
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isNativeAdLoaded = false;
+        });
+      }
     }
   }
 
-  Color get primary => const Color(0xFF1B5E20); // Deep Islamic Green
-  Color get primaryDark => const Color(0xFF0D4F17);
-  Color get accent => const Color(0xFFFFD700); // Gold accent
-  Color get softGreen => const Color(0xFFE8F5E8);
+  // Purple Theme Colors (matching app theme)
+  Color get primary => const Color(0xFF8F66FF); // Main purple
+  Color get primaryDark => const Color(0xFF2D1B69); // Dark purple
+  Color get accent => const Color(0xFF9F70FF); // Accent purple
+  Color get softPurple => const Color(0xFFE8E4F3); // Light purple background
   Color get cardBackground => const Color(0xFFF8F9FA);
 
   // Helper function to format time to 12-hour format with AM/PM
@@ -305,12 +561,141 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
     final controller = Get.put(PrayerTimesController());
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Light gray background
+      backgroundColor: softPurple, // Light purple background
+
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: Obx(() {
           if (controller.isLoading.value && controller.prayerTimes.value == null) {
-            return ShimmerLoadingWidgets.prayerTimesShimmer();
+            // Check if location permission is denied before showing shimmer
+            return FutureBuilder<LocationPermission>(
+              future: Geolocator.checkPermission(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return ShimmerLoadingWidgets.prayerTimesShimmer();
+                }
+
+                if (snapshot.hasData) {
+                  final permission = snapshot.data!;
+                  if (permission == LocationPermission.denied ||
+                      permission == LocationPermission.deniedForever) {
+                    // Show location enable message instead of shimmer
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: primary.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.location_off, size: 80, color: primary),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Location Permission Required',
+                              style: GoogleFonts.poppins(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                                color: primary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Please enable location to load accurate prayer times for your area',
+                              style: GoogleFonts.poppins(
+                                fontSize: 15,
+                                color: primaryDark.withOpacity(0.7),
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 32),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  if (permission == LocationPermission.deniedForever) {
+                                    // Open app settings
+                                    await Geolocator.openAppSettings();
+                                    Get.snackbar(
+                                      'ℹ️ Settings Opened',
+                                      'Please enable location permission and restart the app',
+                                      snackPosition: SnackPosition.BOTTOM,
+                                      duration: const Duration(seconds: 3),
+                                      backgroundColor: primary,
+                                      colorText: Colors.white,
+                                    );
+                                  } else {
+                                    // Request permission
+                                    await _requestAndCheckLocationPermission();
+                                  }
+                                },
+                                icon: Icon(
+                                  permission == LocationPermission.deniedForever
+                                      ? Icons.settings
+                                      : Icons.location_on,
+                                  size: 20,
+                                ),
+                                label: Text(
+                                  permission == LocationPermission.deniedForever
+                                      ? 'Open Settings'
+                                      : 'Enable Location',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Your location is only used to calculate accurate prayer times',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.blue[700],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+                }
+
+                // Location permission granted, show shimmer
+                return ShimmerLoadingWidgets.prayerTimesShimmer();
+              },
+            );
           }
           if (controller.errorMessage.value.isNotEmpty) {
             // Show a simple error screen when controller reports an error.
@@ -369,9 +754,9 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
                   preferredSize: const Size.fromHeight(0),
                   child: Container(
                     height: 15,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF5F7FA),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+                    decoration: BoxDecoration(
+                      color: softPurple,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
                     ),
                   ),
                 ),
@@ -380,15 +765,32 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
               SliverToBoxAdapter(
                 child: Column(
                   children: [
+                    _buildSecondBannerAd(),
                     if (!controller.isOnline.value) _modernOfflineBanner(),
+                    // Location permission banner
+                    FutureBuilder<LocationPermission>(
+                      future: Geolocator.checkPermission(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final permission = snapshot.data!;
+                          if (permission == LocationPermission.denied ||
+                              permission == LocationPermission.deniedForever) {
+                            return _buildLocationPermissionBanner(
+                              permission == LocationPermission.deniedForever,
+                            );
+                          }
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
                     const SizedBox(height: 20),
                     _modernDateNavigator(controller),
                     const SizedBox(height: 20),
                     if (controller.prayerTimes.value != null) _modernPrayerCards(controller),
+
                     // const SizedBox(height: 30),
                     // // _modernIslamicFeaturesSection(),
                     // const SizedBox(height: 20),
-                    _buildBannerAd(),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -408,49 +810,71 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
 
   // ---------- Individual Prayer Tile ----------
 
-  // Banner Ad Widget
-  Widget _buildBannerAd() {
+  // Native Ad Widget (Using advanced native ad template)
+  Widget _buildSecondBannerAd() {
     // Check if ads are disabled for store
     if (AdService.areAdsDisabled) {
+      print('🚫 Native ad widget: Ads disabled for store');
       return const SizedBox.shrink();
     }
 
-    // Show ad only if loaded
-    if (!_isBannerAdLoaded || _bannerAd == null) {
+    // Check if widget is disposed
+    if (_isDisposed) {
+      print('🚫 Native ad widget: Widget is disposed');
+      return const SizedBox.shrink();
+    }
+
+    // Show ad only if loaded - don't take space while loading
+    if (_nativeAd == null || !_isNativeAdLoaded) {
+      print(
+        '⏳ Native ad widget: Not loaded, not taking space (ad=${_nativeAd != null}, loaded=$_isNativeAdLoaded)',
+      );
+      return const SizedBox.shrink();
+    }
+
+    // Double check the ad is actually loaded before showing AdWidget
+    try {
+      // Verify the ad is still valid
+      if (_nativeAd == null) {
+        throw Exception('Native ad became null');
+      }
+
+      print('✅ Native ad widget: Displaying ad (hashCode: ${_nativeAd.hashCode})');
+
       return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        height: 100,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        height: 320, // Native ads are typically taller
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: AdWidget(key: ValueKey('prayer_native_ad_${_nativeAd.hashCode}'), ad: _nativeAd!),
+        ),
+      );
+    } catch (e, stackTrace) {
+      print('❌ Error displaying native AdWidget: $e');
+      print('❌ Stack trace: $stackTrace');
+
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        height: 120,
         decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
         child: Center(
-          child: Text(
-            'Loading Ad...',
-            style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.grey[400], size: 32),
+              const SizedBox(height: 8),
+              Text('Ad Error', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+              const SizedBox(height: 4),
+              Text(
+                e.toString().length > 50 ? '${e.toString().substring(0, 50)}...' : e.toString(),
+                style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       );
     }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          height: 100,
-          child: AdWidget(key: ValueKey('prayer_banner_${_bannerAd.hashCode}'), ad: _bannerAd!),
-        ),
-      ),
-    );
   }
 
   // Islamic Features Section
@@ -486,7 +910,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [const Color(0xFF003D33), const Color(0xFF00574A), const Color(0xFF006B56)],
+            colors: [primaryDark, primary, accent],
           ),
         ),
         child: Stack(
@@ -709,6 +1133,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
                                     fontSize: 12,
                                     decoration: TextDecoration.underline,
                                     fontWeight: FontWeight.w600,
+                                    color: Colors.white,
                                   ),
                                 ),
 
@@ -786,6 +1211,91 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
     );
   }
 
+  // Location Permission Banner
+  Widget _buildLocationPermissionBanner(bool isPermanentlyDenied) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [primary.withOpacity(0.1), primary.withOpacity(0.2)]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primary.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(color: primary.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: primary, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.location_off, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Location Permission Needed',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: primary,
+                      ),
+                    ),
+                    Text(
+                      isPermanentlyDenied
+                          ? 'Open settings to enable location'
+                          : 'Enable location for accurate prayer times',
+                      style: GoogleFonts.poppins(fontSize: 12, color: primary.withOpacity(0.8)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                if (isPermanentlyDenied) {
+                  // Open app settings
+                  await Geolocator.openAppSettings();
+                  Get.snackbar(
+                    'ℹ️ Settings Opened',
+                    'Please enable location permission and restart the app',
+                    snackPosition: SnackPosition.BOTTOM,
+                    duration: const Duration(seconds: 3),
+                    backgroundColor: primary,
+                    colorText: Colors.white,
+                  );
+                } else {
+                  // Request permission
+                  await _requestAndCheckLocationPermission();
+                }
+              },
+              icon: Icon(isPermanentlyDenied ? Icons.settings : Icons.location_on, size: 18),
+              label: Text(
+                isPermanentlyDenied ? 'Open Settings' : 'Enable Location',
+                style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // Modern Date Navigator
   Widget _modernDateNavigator(PrayerTimesController controller) {
     return Container(
@@ -849,7 +1359,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: softGreen,
+          color: softPurple,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: primary.withOpacity(0.2)),
         ),

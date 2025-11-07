@@ -1,18 +1,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- Location permissions for Qibla direction calculation -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.VIBRATE"/>
+    
+    <!-- Network permissions for online mode -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
-    <!-- For Android 12+ -->
+    
+    <!-- Bluetooth permissions for Android 12+ -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" 
         android:usesPermissionFlags="neverForLocation" />
     
-    <!-- Required for compass functionality -->
+    <!-- Sensor permissions for compass and magnetometer -->
     <uses-permission android:name="android.permission.ACCESS_MAGNETIC_FIELD" />
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    
+    <!-- Hardware features for compass -->
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
     <!-- Awesome Notifications Permissions -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>

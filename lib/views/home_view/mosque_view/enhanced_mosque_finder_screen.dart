@@ -180,7 +180,7 @@ class EnhancedMosqueFinderController extends GetxController {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00332F),
+                  color: const Color(0xFF8F66FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.mosque, color: Colors.white, size: 24),
@@ -221,7 +221,7 @@ class EnhancedMosqueFinderController extends GetxController {
                   icon: const Icon(Icons.directions),
                   label: const Text('Directions'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00332F),
+                    backgroundColor: const Color(0xFF8F66FF),
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -269,7 +269,7 @@ class EnhancedMosqueFinderController extends GetxController {
       Get.snackbar(
         'Directions',
         'Please install Google Maps or Apple Maps to get directions',
-        backgroundColor: const Color(0xFF00332F).withOpacity(0.9),
+        backgroundColor: const Color(0xFF8F66FF).withOpacity(0.9),
         colorText: Colors.white,
         duration: const Duration(seconds: 3),
       );
@@ -325,14 +325,14 @@ class EnhancedMosqueFinderController extends GetxController {
 class EnhancedMosqueFinderScreen extends StatelessWidget {
   const EnhancedMosqueFinderScreen({super.key});
 
-  Color get primary => const Color(0xFF00332F);
+  Color get primary => const Color(0xFF8F66FF);
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(EnhancedMosqueFinderController());
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFE8E4F3),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: primary,

@@ -74,14 +74,14 @@ class DhikrCounterController extends GetxController {
 class DhikrCounterScreen extends StatelessWidget {
   const DhikrCounterScreen({super.key});
 
-  Color get primary => const Color(0xFF00332F);
+  Color get primary => const Color(0xFF8F66FF);
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(DhikrCounterController());
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFE8E4F3),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: primary,

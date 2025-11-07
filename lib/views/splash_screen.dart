@@ -53,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final isTablet = size.width > 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF00332F),
+      backgroundColor: const Color(0xFF2D1B69),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -61,7 +61,7 @@ class _SplashScreenState extends State<SplashScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF00332F), Color(0xFF004D40), Color(0xFF00332F)],
+            colors: [Color(0xFF2D1B69), Color(0xFF8F66FF), Color(0xFFAB80FF)],
             stops: [0.0, 0.5, 1.0],
           ),
         ),
@@ -79,27 +79,27 @@ class _SplashScreenState extends State<SplashScreen> {
                   borderRadius: BorderRadius.circular(isTablet ? 125 : 90),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.1),
-                      blurRadius: 20,
-                      spreadRadius: 5,
+                      color: const Color(0xFF9F70FF).withOpacity(0.3),
+                      blurRadius: 30,
+                      spreadRadius: 10,
                     ),
                   ],
                 ),
-                child: Image.asset(qiblaIcon2, fit: BoxFit.contain)
-                    .animate(onPlay: (controller) => controller.repeat())
-                    .rotate(duration: 3000.ms)
+                child: Image.asset("assets/images/Quraniocn.png", fit: BoxFit.contain)
+                    .animate()
                     .scale(
                       begin: const Offset(0.8, 0.8),
                       end: const Offset(1.0, 1.0),
                       duration: 800.ms,
-                    ),
+                    )
+                    .fadeIn(duration: 600.ms),
               ),
 
               SizedBox(height: isTablet ? 40 : 30),
 
               // Responsive title text
               Text(
-                'Qibla Compass',
+                'Muslim Pro - Qibla Prayer',
                 style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontSize: isTablet ? 32 : 24,
@@ -120,18 +120,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
               // Subtitle
               Text(
-                    'Find Your Direction',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: isTablet ? 18 : 14,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 0.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  )
-                  .animate(delay: 300.ms)
-                  .fadeIn(duration: 600.ms)
-                  .slideY(begin: 0.3),
+                'Find Your Direction',
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: isTablet ? 18 : 14,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.5,
+                ),
+                textAlign: TextAlign.center,
+              ).animate(delay: 300.ms).fadeIn(duration: 600.ms).slideY(begin: 0.3),
 
               const Spacer(flex: 2),
 
@@ -149,17 +146,12 @@ class _SplashScreenState extends State<SplashScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(2),
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF8BC34A), Color(0xFF4CAF50)],
+                              colors: [Color(0xFF8F66FF), Color(0xFFAB80FF)],
                             ),
                           ),
                         )
                         .animate(onPlay: (controller) => controller.repeat())
-                        .scaleX(
-                          begin: 0.0,
-                          end: 1.0,
-                          duration: 1500.ms,
-                          curve: Curves.easeInOut,
-                        ),
+                        .scaleX(begin: 0.0, end: 1.0, duration: 1500.ms, curve: Curves.easeInOut),
               ),
             ],
           ),
