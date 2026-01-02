@@ -243,7 +243,7 @@ class QuranController extends GetxController {
           androidNotificationOngoing: false,
           androidStopForegroundOnPause: true,
           androidNotificationClickStartsActivity: true,
-          androidNotificationIcon: 'drawable/ic_notification',
+          androidNotificationIcon: 'mipmap/ic_launcher',
           fastForwardInterval: Duration(seconds: 10),
           rewindInterval: Duration(seconds: 10),
         ),

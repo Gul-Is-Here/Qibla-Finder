@@ -1,6 +1,8 @@
+import 'dart:io' show Platform;
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../models/prayer_model/prayer_times_model.dart';
 import '../../routes/app_pages.dart';
@@ -361,11 +363,49 @@ class NotificationService {
     }
   }
 
+  // Schedule silent sunrise notification (no Azan sound)
+  Future<void> scheduleSilentSunriseNotification({
+    required int id,
+    required DateTime sunriseTime,
+    String? locationName,
+  }) async {
+    try {
+      print('🌅 scheduleSilentSunriseNotification: Scheduling for $sunriseTime (ID: $id)');
+
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: id,
+          channelKey: 'silent_channel', // Use silent channel
+          title: '🌅 Sunrise Time',
+          body: locationName != null
+              ? 'Sunrise in $locationName at ${DateFormat('h:mm a').format(sunriseTime)}'
+              : 'Sunrise at ${DateFormat('h:mm a').format(sunriseTime)}',
+          notificationLayout: NotificationLayout.Default,
+          category: NotificationCategory.Reminder,
+          backgroundColor: Colors.amber,
+          color: Colors.orange,
+          payload: {
+            'type': 'sunrise',
+            'time': sunriseTime.toIso8601String(),
+            'location': locationName ?? '',
+          },
+        ),
+        schedule: NotificationCalendar.fromDate(date: sunriseTime),
+      );
+
+      print('✅ scheduleSilentSunriseNotification: Successfully scheduled sunrise notification');
+    } catch (e, stackTrace) {
+      print('❌ scheduleSilentSunriseNotification: Error: $e');
+      print('Stack trace: $stackTrace');
+    }
+  }
+
   // Schedule all prayers for a specific day
   Future<void> scheduleAllPrayersForDay({
     required PrayerTimesModel prayerTimes,
     required DateTime date,
     String? locationName,
+    bool scheduleSunrise = false,
   }) async {
     print('🔔 scheduleAllPrayersForDay: Called for date: $date');
 
@@ -411,6 +451,31 @@ class NotificationService {
       }
     }
 
+    // Schedule sunrise notification if enabled (always silent)
+    if (scheduleSunrise && prayerTimes.sunrise.isNotEmpty) {
+      try {
+        final sunriseTime = _parsePrayerTime(prayerTimes.sunrise, date);
+        print(
+          '🌅 scheduleAllPrayersForDay: Sunrise at $sunriseTime (${sunriseTime.isAfter(DateTime.now()) ? "FUTURE" : "PAST"})',
+        );
+
+        if (sunriseTime.isAfter(DateTime.now())) {
+          await scheduleSilentSunriseNotification(
+            id: baseId + 100, // Different ID range for sunrise
+            sunriseTime: sunriseTime,
+            locationName: locationName,
+          );
+          scheduledCount++;
+          print('✅ scheduleAllPrayersForDay: Scheduled silent Sunrise notification');
+        } else {
+          skippedCount++;
+          print('⏭️ scheduleAllPrayersForDay: Skipped Sunrise (time has passed)');
+        }
+      } catch (e) {
+        print('❌ scheduleAllPrayersForDay: Error scheduling Sunrise: $e');
+      }
+    }
+
     print(
       '🔔 scheduleAllPrayersForDay: Completed - Scheduled: $scheduledCount, Skipped: $skippedCount',
     );
@@ -420,10 +485,25 @@ class NotificationService {
   Future<void> scheduleMonthlyPrayers({
     required List<PrayerTimesModel> monthlyPrayerTimes,
     String? locationName,
+    bool scheduleSunrise = false,
   }) async {
     print('🔔 NotificationService: scheduleMonthlyPrayers called');
-    print('🔔 NotificationService: Scheduling prayers for ${monthlyPrayerTimes.length} days');
+    print(
+      '🔔 NotificationService: Total prayer times available: ${monthlyPrayerTimes.length} days',
+    );
     print('🔔 NotificationService: Location name: $locationName');
+
+    // iOS has strict notification limits - only schedule 3 days to avoid crashes
+    // This equals 15 notifications (3 days × 5 prayers) which is well within iOS limits
+    // Android can handle more notifications
+    final isIOS = Platform.isIOS;
+    final maxDaysToSchedule = isIOS ? 3 : monthlyPrayerTimes.length;
+
+    // Take only the first N days
+    final prayerTimesToSchedule = monthlyPrayerTimes.take(maxDaysToSchedule).toList();
+
+    print('🔔 NotificationService: Platform: ${isIOS ? "iOS" : "Android"}');
+    print('🔔 NotificationService: Scheduling prayers for ${prayerTimesToSchedule.length} days');
 
     // Ensure notification service is initialized
     if (!_isInitialized) {
@@ -431,10 +511,24 @@ class NotificationService {
       await initialize();
     }
 
+    // CRITICAL: Always cancel ALL existing notifications first to prevent memory issues
+    // This is especially important on iOS to avoid crash from accumulated notifications
+    try {
+      print('🔔 NotificationService: Cancelling ALL existing notifications first...');
+      await AwesomeNotifications().cancelAll();
+      print('✅ NotificationService: Successfully cleared all existing notifications');
+
+      // Add a small delay to ensure cleanup is complete
+      await Future.delayed(const Duration(milliseconds: 500));
+    } catch (e) {
+      print('⚠️ NotificationService: Error cancelling notifications: $e');
+      // Continue anyway as this is not critical
+    }
+
     int successCount = 0;
     int errorCount = 0;
 
-    for (var prayerTimes in monthlyPrayerTimes) {
+    for (var prayerTimes in prayerTimesToSchedule) {
       try {
         // Parse the date from prayer times
         final date = _parseDateFromString(prayerTimes.date);
@@ -444,6 +538,7 @@ class NotificationService {
           prayerTimes: prayerTimes,
           date: date,
           locationName: locationName,
+          scheduleSunrise: scheduleSunrise,
         );
         successCount++;
       } catch (e, stackTrace) {
@@ -453,7 +548,9 @@ class NotificationService {
       }
     }
 
-    print('✅ NotificationService: Completed scheduling monthly prayers');
+    print(
+      '✅ NotificationService: Completed scheduling ${isIOS ? "iOS (5 days)" : "monthly"} prayers',
+    );
     print('🔔 NotificationService: Success: $successCount, Errors: $errorCount');
   }
 

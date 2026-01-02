@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qibla_compass_offline/constants/strings.dart';
+import 'package:get_storage/get_storage.dart';
 import '../routes/app_pages.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -34,15 +34,24 @@ class _SplashScreenState extends State<SplashScreen> {
       // Additional delay for visual effect
       await Future.delayed(const Duration(milliseconds: 700));
 
-      // Navigate to main screen
+      // Check if onboarding is completed
       if (mounted) {
-        Get.offNamed(Routes.MAIN);
+        final storage = GetStorage();
+        final onboardingCompleted = storage.read('onboarding_completed') ?? false;
+
+        if (onboardingCompleted) {
+          // User has already completed onboarding, go to main screen
+          Get.offNamed(Routes.MAIN);
+        } else {
+          // First time user, show onboarding screens
+          Get.offNamed(Routes.NOTIFICATION_PERMISSION);
+        }
       }
     } catch (e) {
       print('Splash initialization error: $e');
       // Fallback navigation even if initialization fails
       if (mounted) {
-        Get.offNamed(Routes.MAIN);
+        Get.offNamed(Routes.NOTIFICATION_PERMISSION);
       }
     }
   }

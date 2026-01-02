@@ -113,6 +113,278 @@ class QiblaController extends GetxController {
 
     // Load manual Qibla angle (default to 0 degrees - North)
     manualQiblaAngle.value = storage.read('manualQiblaAngle') ?? 0.0;
+
+    // Load cached Qibla angle for instant offline display
+    final cachedQibla = storage.read('cachedQiblaAngle');
+    if (cachedQibla != null) {
+      qiblaAngle.value = cachedQibla;
+    }
+
+    // Load selected city for offline mode
+    final savedCityIndex = storage.read('selectedCityIndex') ?? -1;
+    selectedCityIndex.value = savedCityIndex;
+
+    // If a city was previously selected, load its coordinates immediately
+    if (savedCityIndex >= 0 && savedCityIndex < popularCities.length) {
+      final city = popularCities[savedCityIndex];
+      final lat = city['lat'] as double;
+      final lng = city['lng'] as double;
+
+      // Update current location with saved city coordinates
+      currentLocation.value = Position(
+        latitude: lat,
+        longitude: lng,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+
+      locationReady.value = true;
+      locationError.value = 'Using ${city['name']}';
+      _calculateDistanceToKaaba();
+      print('✅ Loaded saved city: ${city['name']}');
+    } else {
+      // If no city is selected, try to load cached GPS location
+      final cachedLat = storage.read('lastKnownLat');
+      final cachedLng = storage.read('lastKnownLng');
+
+      if (cachedLat != null && cachedLng != null) {
+        currentLocation.value = Position(
+          latitude: cachedLat,
+          longitude: cachedLng,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          altitudeAccuracy: 0,
+          heading: 0,
+          headingAccuracy: 0,
+          speed: 0,
+          speedAccuracy: 0,
+        );
+
+        locationReady.value = true;
+        locationError.value = 'Using cached location';
+        _calculateDistanceToKaaba();
+        print('✅ Loaded cached GPS location: ($cachedLat, $cachedLng)');
+      }
+    }
+  }
+
+  // Popular cities with coordinates for offline Qibla calculation
+  static const List<Map<String, dynamic>> popularCities = [
+    {'name': 'New York, USA', 'lat': 40.7128, 'lng': -74.0060},
+    {'name': 'London, UK', 'lat': 51.5074, 'lng': -0.1278},
+    {'name': 'Paris, France', 'lat': 48.8566, 'lng': 2.3522},
+    {'name': 'Dubai, UAE', 'lat': 25.2048, 'lng': 55.2708},
+    {'name': 'Karachi, Pakistan', 'lat': 24.8607, 'lng': 67.0011},
+    {'name': 'Lahore, Pakistan', 'lat': 31.5497, 'lng': 74.3436},
+    {'name': 'Islamabad, Pakistan', 'lat': 33.6844, 'lng': 73.0479},
+    {'name': 'Istanbul, Turkey', 'lat': 41.0082, 'lng': 28.9784},
+    {'name': 'Cairo, Egypt', 'lat': 30.0444, 'lng': 31.2357},
+    {'name': 'Jakarta, Indonesia', 'lat': -6.2088, 'lng': 106.8456},
+    {'name': 'Kuala Lumpur, Malaysia', 'lat': 3.1390, 'lng': 101.6869},
+    {'name': 'Riyadh, Saudi Arabia', 'lat': 24.7136, 'lng': 46.6753},
+    {'name': 'Jeddah, Saudi Arabia', 'lat': 21.5433, 'lng': 39.1728},
+    {'name': 'Mumbai, India', 'lat': 19.0760, 'lng': 72.8777},
+    {'name': 'Delhi, India', 'lat': 28.7041, 'lng': 77.1025},
+    {'name': 'Dhaka, Bangladesh', 'lat': 23.8103, 'lng': 90.4125},
+    {'name': 'Toronto, Canada', 'lat': 43.6532, 'lng': -79.3832},
+    {'name': 'Sydney, Australia', 'lat': -33.8688, 'lng': 151.2093},
+    {'name': 'Berlin, Germany', 'lat': 52.5200, 'lng': 13.4050},
+    {'name': 'Los Angeles, USA', 'lat': 34.0522, 'lng': -118.2437},
+  ];
+
+  var selectedCityIndex = (-1).obs;
+  var distanceToKaaba = 0.0.obs;
+
+  // Select city for offline Qibla calculation
+  void selectCity(int index) {
+    if (index >= 0 && index < popularCities.length) {
+      selectedCityIndex.value = index;
+      storage.write('selectedCityIndex', index);
+
+      final city = popularCities[index];
+      final lat = city['lat'] as double;
+      final lng = city['lng'] as double;
+
+      // Update current location with city coordinates
+      currentLocation.value = Position(
+        latitude: lat,
+        longitude: lng,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+
+      locationReady.value = true;
+      locationError.value = 'Using ${city['name']}';
+      _calculateQiblaDirection();
+      _calculateDistanceToKaaba();
+    }
+  }
+
+  // Use current GPS location instead of offline city
+  Future<void> useCurrentLocation() async {
+    try {
+      // Clear selected city
+      selectedCityIndex.value = -1;
+      storage.remove('selectedCityIndex');
+
+      locationError.value = 'Getting current location...';
+
+      // Check location service
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        locationError.value = 'Location services are disabled';
+        _showErrorSnackbar('Please enable location services');
+        return;
+      }
+
+      // Check permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          locationError.value = 'Location permission denied';
+          _showErrorSnackbar('Location permission is required');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        locationError.value = 'Enable location in settings';
+        _showErrorSnackbar('Please enable location in settings');
+        return;
+      }
+
+      // Get current position
+      currentLocation.value = await locationService
+          .getCurrentPosition(forceAndroidFusedLocation: isOnline.value)
+          .timeout(const Duration(seconds: 10));
+
+      locationReady.value = true;
+      locationError.value = '';
+      _calculateQiblaDirection();
+      _calculateDistanceToKaaba();
+      lastUpdateTime.value = DateTime.now();
+
+      // Cache the GPS location
+      storage.write('lastKnownLat', currentLocation.value.latitude);
+      storage.write('lastKnownLng', currentLocation.value.longitude);
+
+      Get.snackbar(
+        'Success',
+        'Using your current location',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+
+      print('✅ Switched to current GPS location');
+    } catch (e) {
+      locationError.value = 'Failed to get location: $e';
+      _showErrorSnackbar('Could not get current location. Please try again.');
+      print('❌ Error getting current location: $e');
+    }
+  }
+
+  // Refresh Qibla direction
+  Future<void> refreshQibla() async {
+    try {
+      locationError.value = 'Refreshing...';
+
+      // If a city is selected, just recalculate
+      if (selectedCityIndex.value >= 0) {
+        _calculateQiblaDirection();
+        _calculateDistanceToKaaba();
+        locationError.value = 'Using ${popularCities[selectedCityIndex.value]['name']}';
+
+        Get.snackbar(
+          'Refreshed',
+          'Qibla direction updated',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: const Color(0xFF8F66FF),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+        return;
+      }
+
+      // Otherwise get fresh GPS location
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        locationError.value = 'Location services are disabled';
+        _showErrorSnackbar('Please enable location services');
+        return;
+      }
+
+      currentLocation.value = await locationService
+          .getCurrentPosition(forceAndroidFusedLocation: isOnline.value)
+          .timeout(const Duration(seconds: 10));
+
+      locationReady.value = true;
+      locationError.value = '';
+      _calculateQiblaDirection();
+      _calculateDistanceToKaaba();
+      lastUpdateTime.value = DateTime.now();
+
+      // Cache the GPS location
+      storage.write('lastKnownLat', currentLocation.value.latitude);
+      storage.write('lastKnownLng', currentLocation.value.longitude);
+
+      Get.snackbar(
+        'Refreshed',
+        'Qibla direction updated',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFF8F66FF),
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
+
+      print('✅ Qibla direction refreshed');
+    } catch (e) {
+      locationError.value = 'Failed to refresh';
+      _showErrorSnackbar('Could not refresh. Please try again.');
+      print('❌ Error refreshing Qibla: $e');
+    }
+  }
+
+  // Calculate distance to Kaaba using Haversine formula
+  void _calculateDistanceToKaaba() {
+    if (!locationReady.value) {
+      distanceToKaaba.value = 0;
+      return;
+    }
+
+    const double R = 6371; // Earth's radius in km
+    final double lat1 = currentLocation.value.latitude * pi / 180;
+    final double lat2 = kaabaLat * pi / 180;
+    final double dLat = (kaabaLat - currentLocation.value.latitude) * pi / 180;
+    final double dLon = (kaabaLng - currentLocation.value.longitude) * pi / 180;
+
+    final double a =
+        sin(dLat / 2) * sin(dLat / 2) + cos(lat1) * cos(lat2) * sin(dLon / 2) * sin(dLon / 2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    distanceToKaaba.value = R * c;
+  }
+
+  // Get formatted distance string
+  String get formattedDistance {
+    if (distanceToKaaba.value == 0) return 'Unknown';
+    if (distanceToKaaba.value < 1) {
+      return '${(distanceToKaaba.value * 1000).round()} m';
+    }
+    return '${distanceToKaaba.value.round()} km';
   }
 
   // Toggle methods for settings
@@ -229,6 +501,11 @@ class QiblaController extends GetxController {
         locationError.value = '';
         _calculateQiblaDirection();
         lastUpdateTime.value = DateTime.now();
+
+        // Cache the GPS location for next app start
+        storage.write('lastKnownLat', currentLocation.value.latitude);
+        storage.write('lastKnownLng', currentLocation.value.longitude);
+
         print('✅ Location updated (${isOnline.value ? "online" : "GPS"} mode)');
       } catch (e) {
         // If we already have last known position, just continue with it
@@ -246,6 +523,10 @@ class QiblaController extends GetxController {
           locationReady.value = true;
           _calculateQiblaDirection();
           lastUpdateTime.value = DateTime.now();
+
+          // Cache the GPS location
+          storage.write('lastKnownLat', position.latitude);
+          storage.write('lastKnownLng', position.longitude);
         },
         onError: (error) {
           locationError.value = 'Location error: ${error.toString()}';
@@ -311,6 +592,13 @@ class QiblaController extends GetxController {
         atan2(sin(lambdaK - lambda), cos(phi) * tan(phiK) - sin(phi) * cos(lambdaK - lambda));
 
     qiblaAngle.value = (psi + 360) % 360; // Normalize to 0-360 degrees
+
+    // Cache the calculated Qibla angle for offline use
+    storage.write('cachedQiblaAngle', qiblaAngle.value);
+
+    // Calculate distance to Kaaba
+    _calculateDistanceToKaaba();
+
     update();
   }
 

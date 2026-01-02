@@ -765,7 +765,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
               SliverToBoxAdapter(
                 child: Column(
                   children: [
-                    _buildSecondBannerAd(),
+                    // _buildSecondBannerAd(),
                     if (!controller.isOnline.value) _modernOfflineBanner(),
                     // Location permission banner
                     FutureBuilder<LocationPermission>(

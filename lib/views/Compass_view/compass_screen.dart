@@ -111,20 +111,12 @@ class OptimizedHomeScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Obx(
-                      () => _statCard(
-                        "Your Angle to Qibla",
-                        "${controller.qiblaAngle.value.round()}°",
-                      ),
+                      () => _statCard("Qibla Direction", "${controller.qiblaAngle.value.round()}°"),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Obx(
-                      () => _statCard(
-                        "Qibla Angle from North",
-                        "${controller.qiblaAngle.value.round()}°",
-                      ),
-                    ),
+                    child: Obx(() => _statCard("Distance to Kaaba", controller.formattedDistance)),
                   ),
                 ],
               ),
@@ -208,11 +200,159 @@ class OptimizedHomeScreen extends StatelessWidget {
 
               const SizedBox(height: 20),
               Obx(() => _statusBox(controller.locationReady.value, controller.locationError.value)),
+
+              // City Selection for Offline Mode
+              const SizedBox(height: 16),
+              _buildCitySelector(),
+
+              // Calibration Guide
+              Obx(
+                () => controller.calibrationNeeded.value
+                    ? _buildCalibrationGuide()
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildCitySelector() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Colors.white, cardBg]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: pill.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: pill.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_city, color: pill, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Offline Mode - Select Your City',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: bgGradientStart,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: pill.withOpacity(0.2)),
+            ),
+            child: Obx(
+              () => DropdownButton<int>(
+                value: controller.selectedCityIndex.value >= 0
+                    ? controller.selectedCityIndex.value
+                    : null,
+                hint: Text(
+                  'Select a city for offline Qibla',
+                  style: GoogleFonts.poppins(fontSize: 13, color: textSecondary),
+                ),
+                isExpanded: true,
+                underline: const SizedBox(),
+                icon: Icon(Icons.arrow_drop_down, color: pill),
+                items: List.generate(
+                  QiblaController.popularCities.length,
+                  (index) => DropdownMenuItem<int>(
+                    value: index,
+                    child: Text(
+                      QiblaController.popularCities[index]['name'] as String,
+                      style: GoogleFonts.poppins(fontSize: 13, color: textPrimary),
+                    ),
+                  ),
+                ),
+                onChanged: (index) {
+                  if (index != null) {
+                    controller.selectCity(index);
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Use this when GPS is unavailable. The Qibla direction will be calculated based on the selected city.',
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: textSecondary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalibrationGuide() {
+    return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [Colors.orange.shade50, Colors.orange.shade100]),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.orange.withOpacity(0.5), width: 1.5),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Compass Needs Calibration',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange[800],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.rotate_right, color: Colors.orange[700], size: 36),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Move your phone in a figure-8 pattern several times to calibrate the compass sensor.',
+                      style: GoogleFonts.poppins(fontSize: 12, color: Colors.orange[900]),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .shimmer(
+          duration: 2000.ms,
+          colors: [Colors.transparent, Colors.orange.withOpacity(0.2), Colors.transparent],
+        );
   }
 
   // ----- ENHANCED COMPONENTS -----

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qibla_compass_offline/views/Compass_view/compass_screen.dart'
-    show OptimizedHomeScreen;
+import 'package:qibla_compass_offline/views/Compass_view/beautiful_qibla_screen.dart';
 
-import 'home_view/IslamicResource/enhanced_islamic_features_screen.dart';
-import 'Prayers_views/prayer_times_screen.dart';
+import 'Prayers_views/beautiful_prayer_times_screen.dart';
 import 'Quran_views/quran_list_screen.dart';
 import 'settings_views/settings_screen.dart';
 
@@ -75,11 +73,6 @@ class MainNavigationScreen extends StatelessWidget {
                 label: 'Quran',
               ),
               BottomNavigationBarItem(
-                icon: const Icon(Icons.star_outline),
-                activeIcon: Icon(Icons.star, size: isTablet ? 32 : 28),
-                label: 'Islamic',
-              ),
-              BottomNavigationBarItem(
                 icon: const Icon(Icons.settings),
                 activeIcon: Icon(Icons.settings, size: isTablet ? 32 : 28),
                 label: 'Settings',
@@ -96,10 +89,9 @@ class NavigationController extends GetxController {
   var selectedIndex = 1.obs; // Default to Prayer Times (index 1)
 
   final List<Widget> screens = [
-    OptimizedHomeScreen(),
-    const PrayerTimesScreen(),
+    const BeautifulQiblaScreen(),
+    const BeautifulPrayerTimesScreen(),
     const QuranListScreen(),
-    const EnhancedIslamicFeaturesScreen(),
     const SettingsScreen(),
   ];
 

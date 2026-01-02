@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../../services/notifications/notification_service.dart';
@@ -22,6 +23,9 @@ class NotificationSettingsController extends GetxController {
   var maghribEnabled = true.obs;
   var ishaEnabled = true.obs;
 
+  // Sunrise notification (always silent)
+  var sunriseNotificationEnabled = false.obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -30,14 +34,12 @@ class NotificationSettingsController extends GetxController {
   }
 
   Future<void> _checkNotificationPermission() async {
-    notificationsEnabled.value = await _notificationService
-        .areNotificationsEnabled();
+    notificationsEnabled.value = await _notificationService.areNotificationsEnabled();
   }
 
   void _loadSettings() {
     // Load saved settings
-    notificationsEnabled.value =
-        _storage.read('notifications_enabled') ?? false;
+    notificationsEnabled.value = _storage.read('notifications_enabled') ?? false;
     playAzan.value = _storage.read('play_azan') ?? true;
     silentMode.value = _storage.read('silent_mode') ?? false;
     volume.value = _storage.read('volume') ?? 0.8;
@@ -50,6 +52,9 @@ class NotificationSettingsController extends GetxController {
     asrEnabled.value = _storage.read('asr_enabled') ?? true;
     maghribEnabled.value = _storage.read('maghrib_enabled') ?? true;
     ishaEnabled.value = _storage.read('isha_enabled') ?? true;
+
+    // Load sunrise notification setting
+    sunriseNotificationEnabled.value = _storage.read('sunrise_enabled') ?? false;
   }
 
   Future<void> toggleNotifications(bool value) async {
@@ -175,6 +180,24 @@ class NotificationSettingsController extends GetxController {
     }
   }
 
+  Future<void> toggleSunriseNotification(bool value) async {
+    sunriseNotificationEnabled.value = value;
+    await _storage.write('sunrise_enabled', value);
+    await _rescheduleNotifications();
+
+    if (value) {
+      Get.snackbar(
+        'Sunrise Reminder Enabled',
+        'You will receive silent notifications at sunrise',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.amber,
+        colorText: Colors.white,
+        icon: const Icon(Icons.wb_sunny, color: Colors.white),
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
   Future<void> _rescheduleNotifications() async {
     if (!notificationsEnabled.value) return;
 
@@ -196,6 +219,7 @@ class NotificationSettingsController extends GetxController {
           await _notificationService.scheduleMonthlyPrayers(
             monthlyPrayerTimes: filteredPrayers,
             locationName: prayerController.locationName.value,
+            scheduleSunrise: sunriseNotificationEnabled.value,
           );
         }
       }

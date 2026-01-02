@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
@@ -11,6 +12,9 @@ import 'services/notifications/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Google Mobile Ads SDK
+  await MobileAds.instance.initialize();
 
   try {
     // Initialize essential services with timeout protection for physical devices

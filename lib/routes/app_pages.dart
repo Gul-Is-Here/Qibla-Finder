@@ -11,6 +11,8 @@ import '../views/home_view/IslamicResource/islamic_features_index_screen.dart';
 import '../views/main_navigation_screen.dart';
 import '../views/home_view/IslamicResource/names_of_allah_screen.dart';
 import '../views/Compass_view/compass_screen.dart';
+import '../views/onboarding/notification_permission_screen.dart';
+import '../views/onboarding/location_permission_screen.dart';
 // import '../views/home_view/dua_view/Prayers_views/prayer_times_screen.dart';
 import '../views/Quran_views/quran_list_screen.dart';
 import '../views/Quran_views/quran_reader_screen.dart';
@@ -19,6 +21,8 @@ import '../views/splash_screen.dart';
 
 abstract class Routes {
   static const SPLASH = '/splash';
+  static const NOTIFICATION_PERMISSION = '/notification-permission';
+  static const LOCATION_PERMISSION = '/location-permission';
   static const HOME = '/home';
   static const MAIN = '/main';
   static const PRAYER_TIMES = '/prayer-times';
@@ -40,6 +44,8 @@ abstract class Routes {
 class AppPages {
   static final routes = [
     GetPage(name: Routes.SPLASH, page: () => const SplashScreen()),
+    GetPage(name: Routes.NOTIFICATION_PERMISSION, page: () => const NotificationPermissionScreen()),
+    GetPage(name: Routes.LOCATION_PERMISSION, page: () => const LocationPermissionScreen()),
     GetPage(
       name: Routes.HOME,
       page: () => OptimizedHomeScreen(),
