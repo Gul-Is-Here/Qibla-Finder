@@ -424,27 +424,6 @@ class OptimizedHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _compassShell({required double size, required Widget child}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0x0DFFFFFF),
-        border: Border.all(color: stroke, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: child,
-    );
-  }
-
   Widget _angleButton({
     required IconData icon,
     required String label,

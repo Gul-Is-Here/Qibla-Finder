@@ -17,6 +17,7 @@ import '../views/onboarding/location_permission_screen.dart';
 import '../views/Quran_views/quran_list_screen.dart';
 import '../views/Quran_views/quran_reader_screen.dart';
 import '../views/settings_views/settings_screen.dart';
+import '../views/settings_views/notification_settings_screen.dart';
 import '../views/splash_screen.dart';
 
 abstract class Routes {
@@ -30,6 +31,7 @@ abstract class Routes {
   static const QURAN_READER = '/quran-reader';
   static const ABOUT = '/about';
   static const SETTINGS = '/settings';
+  static const NOTIFICATION_SETTINGS = '/notification-settings';
   static const FEEDBACK = '/feedback';
   // New Islamic features
   static const ISLAMIC_CALENDAR = '/islamic-calendar';
@@ -74,6 +76,11 @@ class AppPages {
     GetPage(
       name: Routes.SETTINGS,
       page: () => const SettingsScreen(),
+      middlewares: [AdTrackingMiddleware()],
+    ),
+    GetPage(
+      name: Routes.NOTIFICATION_SETTINGS,
+      page: () => const NotificationSettingsScreen(),
       middlewares: [AdTrackingMiddleware()],
     ),
     // New Islamic features

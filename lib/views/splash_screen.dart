@@ -20,36 +20,36 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeApp() async {
-    // Start essential services in background during splash
     try {
-      // Minimal delay for splash effect
-      await Future.delayed(const Duration(milliseconds: 800));
+      // FAST: Reduced delay for quick startup
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      // Pre-warm services without blocking UI
-      Future.microtask(() async {
-        // Warm up GetStorage and other services
-        await Future.delayed(const Duration(milliseconds: 100));
-      });
-
-      // Additional delay for visual effect
-      await Future.delayed(const Duration(milliseconds: 700));
-
-      // Check if onboarding is completed
+      // Check navigation target immediately
       if (mounted) {
         final storage = GetStorage();
         final onboardingCompleted = storage.read('onboarding_completed') ?? false;
+        final locationPermissionGranted = storage.read('location_permission_granted') ?? false;
 
-        if (onboardingCompleted) {
-          // User has already completed onboarding, go to main screen
+        // Debug: Print flag values
+        print('� Splash Screen - Quick check:');
+        print('   onboarding_completed: $onboardingCompleted');
+        print('   location_permission_granted: $locationPermissionGranted');
+
+        // Navigate immediately based on flags
+        if (onboardingCompleted && locationPermissionGranted) {
+          print('✅ Going to Main Screen');
           Get.offNamed(Routes.MAIN);
         } else {
-          // First time user, show onboarding screens
+          if (onboardingCompleted && !locationPermissionGranted) {
+            print('⚠️ Resetting onboarding flag');
+            storage.write('onboarding_completed', false);
+          }
+          print('📱 Showing Onboarding Screen');
           Get.offNamed(Routes.NOTIFICATION_PERMISSION);
         }
       }
     } catch (e) {
-      print('Splash initialization error: $e');
-      // Fallback navigation even if initialization fails
+      print('Splash error: $e');
       if (mounted) {
         Get.offNamed(Routes.NOTIFICATION_PERMISSION);
       }

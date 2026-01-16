@@ -137,7 +137,7 @@ class _IslamicCompassWidgetState extends State<IslamicCompassWidget> with Ticker
 
             // Facing Qibla indicator text
             if (isFacingQibla)
-              Positioned(bottom: -widget.compassSize * 0.15, child: _buildFacingQiblaIndicator()),
+              Positioned(top: widget.compassSize * 1.1, child: _buildFacingQiblaIndicator()),
           ],
         ),
       );
@@ -185,7 +185,7 @@ class _IslamicCompassWidgetState extends State<IslamicCompassWidget> with Ticker
         // Qibla direction line
         Container(
           width: 3,
-          height: widget.compassSize * 0.45,
+          height: widget.compassSize * 0.4,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,

@@ -7,19 +7,19 @@ import 'package:get_storage/get_storage.dart';
 
 class PerformanceService extends GetxService {
   static PerformanceService get instance => Get.find<PerformanceService>();
-  
+
   final GetStorage _storage = GetStorage();
-  
+
   // Performance metrics
   var cpuUsage = 0.0.obs;
   var memoryUsage = 0.0.obs;
   var frameRenderTime = 0.0.obs;
   var isOptimizationEnabled = true.obs;
-  
+
   // Caching for frequently accessed data
   final Map<String, dynamic> _memoryCache = {};
   Timer? _performanceTimer;
-  
+
   @override
   void onInit() {
     super.onInit();
@@ -30,10 +30,10 @@ class PerformanceService extends GetxService {
   void _initializePerformanceOptimizations() {
     // Load optimization settings
     isOptimizationEnabled.value = _storage.read('optimization_enabled') ?? true;
-    
+
     // Set up Flutter performance optimizations
     _setupFlutterOptimizations();
-    
+
     // Preload critical data
     _preloadCriticalData();
   }
@@ -43,7 +43,7 @@ class PerformanceService extends GetxService {
     if (isOptimizationEnabled.value) {
       // Reduce unnecessary rebuilds
       Get.smartManagement = SmartManagement.keepFactory;
-      
+
       // Optimize image caching
       PaintingBinding.instance.imageCache.maximumSize = 100;
       PaintingBinding.instance.imageCache.maximumSizeBytes = 50 << 20; // 50MB
@@ -59,7 +59,7 @@ class PerformanceService extends GetxService {
       'assets/icons/qibla1.png',
       'assets/icons/qibla2.png',
     ];
-    
+
     for (String asset in criticalAssets) {
       _preloadAsset(asset);
     }
@@ -91,7 +91,7 @@ class PerformanceService extends GetxService {
       final now = DateTime.now();
       frameRenderTime.value = now.millisecondsSinceEpoch.toDouble();
     });
-    
+
     // Monitor memory usage (simplified)
     _estimateMemoryUsage();
   }
@@ -142,7 +142,10 @@ class PerformanceService extends GetxService {
 
   // Throttle utility for limiting function call frequency
   static DateTime? _lastThrottleTime;
-  static void throttle(VoidCallback action, {Duration duration = const Duration(milliseconds: 100)}) {
+  static void throttle(
+    VoidCallback action, {
+    Duration duration = const Duration(milliseconds: 100),
+  }) {
     final now = DateTime.now();
     if (_lastThrottleTime == null || now.difference(_lastThrottleTime!) >= duration) {
       _lastThrottleTime = now;
@@ -154,7 +157,7 @@ class PerformanceService extends GetxService {
   void enableBatteryOptimization() {
     isOptimizationEnabled.value = true;
     _storage.write('optimization_enabled', true);
-    
+
     // Reduce update frequencies
     _optimizeForBattery();
   }
@@ -184,10 +187,18 @@ class PerformanceService extends GetxService {
     }
   }
 
-  @override
-  void onClose() {
+  // Dispose method for proper cleanup
+  void dispose() {
     _performanceTimer?.cancel();
     _debounceTimer?.cancel();
+    _memoryCache.clear();
+    PaintingBinding.instance.imageCache.clear();
+    print('✅ PerformanceService disposed - all resources cleaned up');
+  }
+
+  @override
+  void onClose() {
+    dispose();
     super.onClose();
   }
 }

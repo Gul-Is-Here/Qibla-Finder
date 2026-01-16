@@ -70,7 +70,7 @@ class LocationService {
 
           throw _LocationException(
             'Location permissions denied',
-            'Please grant location permissions to use this feature',
+            'Location access is required to use this app',
           );
         }
       }
@@ -85,7 +85,7 @@ class LocationService {
 
         throw _LocationException(
           'Location permissions permanently denied',
-          'Please enable location permissions in app settings',
+          'Please enable location permissions in your device settings',
         );
       }
 
@@ -138,8 +138,15 @@ class LocationService {
 
   Future<Position?> getLastKnownPosition() async {
     try {
-      // Try Geolocator's last known position first
-      final geoPos = await Geolocator.getLastKnownPosition(forceAndroidLocationManager: true);
+      // Try Geolocator's last known position first with 5s timeout
+      final geoPos = await Geolocator.getLastKnownPosition(forceAndroidLocationManager: true)
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              print('⏱️ getLastKnownPosition timed out, using saved location');
+              return _getSavedLocation();
+            },
+          );
 
       if (geoPos != null) {
         await _saveLastLocation(geoPos);
@@ -149,7 +156,11 @@ class LocationService {
       // Fallback to saved location from storage
       return _getSavedLocation();
     } catch (e) {
-      print('Error getting last known position: $e');
+      // Silently fail - this is expected on first app install
+      // Only log if it's not a permission error
+      if (!e.toString().contains('denied') && !e.toString().contains('permissions')) {
+        print('⚠️ Could not get last known position: $e');
+      }
       // Return saved location as last resort
       return _getSavedLocation();
     }

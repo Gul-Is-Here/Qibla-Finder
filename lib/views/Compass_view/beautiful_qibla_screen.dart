@@ -73,11 +73,12 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
-                        const SizedBox(height: 10),
+                        // const SizedBox(height: 30),
 
                         // Bismillah with decorative frame
                         _buildBismillahSection(),
 
+                        const OptimizedBannerAdWidget(padding: EdgeInsets.symmetric(horizontal: 0)),
                         const SizedBox(height: 20),
 
                         // Stats Cards
@@ -96,8 +97,6 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
                         const SizedBox(height: 16),
 
                         // Banner Ad
-                        const OptimizedBannerAdWidget(padding: EdgeInsets.symmetric(horizontal: 0)),
-
                         const SizedBox(height: 16),
 
                         // City Selector with Islamic Design
@@ -325,6 +324,7 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
               _buildDecorativeLine(),
             ],
           ),
+          const SizedBox(height: 12),
         ],
       ),
     ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2, end: 0);
@@ -394,7 +394,7 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
             () => Text(
               valueBuilder(),
               style: GoogleFonts.cinzel(
-                fontSize: 28,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: moonWhite,
               ),
@@ -416,7 +416,7 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
   }
 
   Widget _buildIslamicCompass(Size size) {
-    final compassSize = min(size.width * 0.85, 340.0);
+    final compassSize = min(size.width * 0.50, 240.0);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -463,15 +463,15 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
             return Transform.rotate(
               angle: qiblaIndicatorAngle,
               child: Container(
-                width: 60,
-                height: 60,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [goldAccent.withOpacity(0.3), Colors.transparent],
                   ),
                 ),
-                child: Center(child: Icon(Icons.mosque, color: goldAccent, size: 28)),
+                child: Center(child: Icon(Icons.mosque, color: goldAccent, size: 24)),
               ),
             );
           }),

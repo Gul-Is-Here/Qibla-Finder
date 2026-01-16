@@ -30,11 +30,6 @@ class _BeautifulPrayerTimesScreenState extends State<BeautifulPrayerTimesScreen>
   late AnimationController _rotateController;
   late AnimationController _shimmerController;
 
-  // Beautiful Islamic Color Palette - Using App Theme Colors
-  static const Color deepNight = Color(0xFF0A1628);
-  static const Color midnightBlue = Color(0xFF112240);
-  static const Color royalPurple = Color(0xFF4A1B7A);
-
   // App Theme Colors
   static const Color primaryPurple = Color(0xFF8F66FF); // Main app purple
   static const Color lightPurple = Color(0xFFAB80FF); // Light purple
@@ -160,7 +155,6 @@ class _BeautifulPrayerTimesScreenState extends State<BeautifulPrayerTimesScreen>
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(PrayerTimesController());
-    final size = MediaQuery.of(context).size;
 
     // Set status bar color to match header
     SystemChrome.setSystemUIOverlayStyle(
@@ -195,7 +189,7 @@ class _BeautifulPrayerTimesScreenState extends State<BeautifulPrayerTimesScreen>
                 child: Column(
                   children: [
                     // Offline Banner
-                    if (!controller.isOnline.value) _buildOfflineBanner(),
+                    // if (!controller.isOnline.value) _buildOfflineBanner(),
 
                     // Location Permission Banner
                     _buildLocationPermissionBanner(),
@@ -232,19 +226,6 @@ class _BeautifulPrayerTimesScreenState extends State<BeautifulPrayerTimesScreen>
 
   Widget _buildIslamicHeader(PrayerTimesController controller) {
     return Obx(() {
-      final nextPrayer = controller.nextPrayer.value;
-      final timeLeft = controller.timeUntilNextPrayer.value;
-      String nextPrayerTime = '';
-      String sunriseTime = '';
-      String sunsetTime = '';
-
-      if (controller.prayerTimes.value != null) {
-        final prayers = controller.prayerTimes.value!.getAllPrayerTimes();
-        nextPrayerTime = prayers[nextPrayer] ?? '';
-        sunriseTime = prayers['Sunrise'] ?? '';
-        sunsetTime = prayers['Maghrib'] ?? '';
-      }
-
       return Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -908,7 +889,7 @@ Shared from Qibla Compass App
               colors: [
                 primaryPurple.withOpacity(0.9),
                 darkPurple.withOpacity(0.85),
-                royalPurple.withOpacity(0.8),
+                accentPurple.withOpacity(0.8),
               ],
             ),
             borderRadius: BorderRadius.circular(20),
@@ -1279,14 +1260,14 @@ Shared from Qibla Compass App
         children: [
           Icon(Icons.wifi_off, color: Colors.orange[700], size: 20),
           const SizedBox(width: 10),
-          Text(
-            'Offline Mode - Showing cached data',
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: Colors.orange[800],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          // Text(
+          //   'Offline Mode - Showing cached data',
+          //   style: GoogleFonts.poppins(
+          //     fontSize: 12,
+          //     color: Colors.orange[800],
+          //     fontWeight: FontWeight.w500,
+          //   ),
+          // ),
         ],
       ),
     );

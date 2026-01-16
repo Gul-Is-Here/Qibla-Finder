@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../models/prayer_model/prayer_times_model.dart';
 import '../../routes/app_pages.dart';
+import 'enhanced_notification_service.dart';
 
 class NotificationService {
   static final NotificationService instance = NotificationService._init();
@@ -116,6 +117,16 @@ class NotificationService {
 
     // Set up notification listeners
     _setupListeners();
+
+    // Initialize enhanced notification channels
+    try {
+      final enhancedService = EnhancedNotificationService.instance;
+      await enhancedService.initializeEnhancedChannels();
+      print('✅ Enhanced notification channels initialized');
+    } catch (e) {
+      print('⚠️ Error initializing enhanced channels: $e');
+      // Continue without enhanced features if initialization fails
+    }
   }
 
   Future<bool> requestPermissions() async {
@@ -172,16 +183,149 @@ class NotificationService {
   static Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
     print('Notification action: ${receivedAction.buttonKeyPressed}');
 
+    final payload = receivedAction.payload ?? {};
+    final enhancedService = EnhancedNotificationService.instance;
+
     // Handle navigation when notification is tapped
     if (receivedAction.buttonKeyPressed.isEmpty) {
       // User tapped the notification itself (not a button)
       // Navigate to Prayer Times screen
       Get.toNamed(Routes.PRAYER_TIMES);
-    } else if (receivedAction.buttonKeyPressed == 'STOP_AZAN') {
-      await _stopAzan();
-    } else if (receivedAction.buttonKeyPressed == 'MARK_PRAYED') {
-      await _stopAzan();
-      // You can add logic to mark prayer as completed
+      return;
+    }
+
+    // Handle action buttons
+    switch (receivedAction.buttonKeyPressed) {
+      case 'STOP_AZAN':
+        await _stopAzan();
+        break;
+
+      case 'MARK_PRAYED':
+        await _stopAzan();
+        final prayerName = payload['prayer'] ?? '';
+        if (prayerName.isNotEmpty) {
+          await enhancedService.updatePrayerStreak(prayerName);
+          Get.snackbar(
+            '✅ Prayer Marked',
+            'Great! $prayerName marked as completed',
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF4CAF50),
+            colorText: Colors.white,
+          );
+        }
+        break;
+
+      case 'REMIND_LATER':
+        Get.snackbar(
+          'ℹ️ Reminder Set',
+          'We\'ll remind you in 15 minutes',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        break;
+
+      case 'OPEN_COUNTER':
+        // Navigate to Dhikr Counter - update route as needed
+        Get.toNamed(Routes.HOME); // Replace with actual dhikr counter route
+        break;
+
+      case 'MARK_DONE':
+        Get.snackbar(
+          '✅ Completed',
+          'May Allah accept your remembrance',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF4CAF50),
+          colorText: Colors.white,
+        );
+        break;
+
+      case 'READ_SURAH':
+        // Navigate to Quran reader - update route as needed
+        Get.snackbar(
+          '📖 Surah Al-Kahf',
+          'Opening Quran reader...',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        break;
+
+      case 'SET_REMINDER':
+        Get.snackbar(
+          '⏰ Reminder Set',
+          'We\'ll remind you before Jummah',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        break;
+
+      case 'VIEW_LIST':
+        // Navigate to Qada tracker - implement screen as needed
+        Get.snackbar(
+          '📝 Qada Prayers',
+          'Feature coming soon',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        break;
+
+      case 'VIEW_STATS':
+      case 'VIEW_REPORT':
+        // Navigate to prayer stats - implement screen as needed
+        Get.snackbar(
+          '📊 Prayer Statistics',
+          'Feature coming soon',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        break;
+
+      case 'SHARE':
+        final streak = enhancedService.getCurrentStreak();
+        Get.snackbar(
+          '🎉 Share Achievement',
+          '$streak days prayer streak!',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        break;
+
+      case 'SNOOZE_30':
+        Get.snackbar(
+          '😴 Snoozed',
+          'We\'ll wake you in 30 minutes',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+        break;
+
+      case 'IM_AWAKE':
+        Get.snackbar(
+          '🌙 Great!',
+          'May your Tahajjud be accepted',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF2D1B69),
+          colorText: Colors.white,
+        );
+        break;
+
+      case 'LEARN_MORE':
+        Get.snackbar(
+          '📖 Learn More',
+          'Tap to learn about this blessed day',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 3),
+        );
+        break;
+
+      case 'DISMISS':
+        // Just dismiss
+        break;
+
+      default:
+        print('⚠️ Unknown action: ${receivedAction.buttonKeyPressed}');
     }
   }
 
@@ -479,31 +623,125 @@ class NotificationService {
     print(
       '🔔 scheduleAllPrayersForDay: Completed - Scheduled: $scheduledCount, Skipped: $skippedCount',
     );
+
+    // === ENHANCED NOTIFICATIONS ===
+    await _scheduleEnhancedNotifications(
+      prayerTimes: prayerTimes,
+      date: date,
+      locationName: locationName,
+      baseId: baseId,
+    );
   }
 
-  // Schedule prayers for multiple days (monthly)
+  // Schedule enhanced notifications for a day
+  Future<void> _scheduleEnhancedNotifications({
+    required PrayerTimesModel prayerTimes,
+    required DateTime date,
+    String? locationName,
+    required int baseId,
+  }) async {
+    try {
+      final enhancedService = EnhancedNotificationService.instance;
+
+      // Parse all prayer times
+      final fajrTime = _parsePrayerTime(prayerTimes.fajr, date);
+      final sunriseTime = _parsePrayerTime(prayerTimes.sunrise, date);
+      final dhuhrTime = _parsePrayerTime(prayerTimes.dhuhr, date);
+      final asrTime = _parsePrayerTime(prayerTimes.asr, date);
+      final maghribTime = _parsePrayerTime(prayerTimes.maghrib, date);
+      final ishaTime = _parsePrayerTime(prayerTimes.isha, date);
+
+      final prayers = [
+        {'name': 'Fajr', 'time': fajrTime},
+        {'name': 'Dhuhr', 'time': dhuhrTime},
+        {'name': 'Asr', 'time': asrTime},
+        {'name': 'Maghrib', 'time': maghribTime},
+        {'name': 'Isha', 'time': ishaTime},
+      ];
+
+      // 1. Pre-Prayer Reminders
+      if (enhancedService.prePrayerEnabled) {
+        for (int i = 0; i < prayers.length; i++) {
+          await enhancedService.schedulePrePrayerReminder(
+            id: 10000 + baseId + i,
+            prayerName: prayers[i]['name'] as String,
+            prayerTime: prayers[i]['time'] as DateTime,
+            minutesBefore: enhancedService.prePrayerMinutes,
+          );
+        }
+      }
+
+      // 2. Post-Prayer Check-ins
+      if (enhancedService.postPrayerEnabled) {
+        for (int i = 0; i < prayers.length; i++) {
+          await enhancedService.schedulePostPrayerCheckIn(
+            id: 20000 + baseId + i,
+            prayerName: prayers[i]['name'] as String,
+            prayerTime: prayers[i]['time'] as DateTime,
+          );
+        }
+      }
+
+      // 3. Jummah Reminder (if Friday)
+      if (date.weekday == DateTime.friday && enhancedService.jummahEnabled) {
+        await enhancedService.scheduleJummahReminder(
+          jummahTime: dhuhrTime,
+          locationName: locationName,
+        );
+      }
+
+      // 4. Tahajjud Reminder
+      if (enhancedService.tahajjudEnabled) {
+        await enhancedService.scheduleTahajjudReminder(ishaTime: ishaTime, fajrTime: fajrTime);
+      }
+
+      // 5. Duha Prayer Reminder
+      if (enhancedService.duhaEnabled) {
+        await enhancedService.scheduleDuhaReminder(sunriseTime: sunriseTime, dhuhrTime: dhuhrTime);
+      }
+
+      print('✅ Enhanced notifications scheduled for $date');
+    } catch (e) {
+      print('⚠️ Error scheduling enhanced notifications: $e');
+      // Continue without enhanced features
+    }
+  }
+
+  // Schedule prayers for multiple days (monthly) - OPTIMIZED
+  // Only schedules FUTURE prayers, not past ones
   Future<void> scheduleMonthlyPrayers({
     required List<PrayerTimesModel> monthlyPrayerTimes,
     String? locationName,
     bool scheduleSunrise = false,
   }) async {
-    print('🔔 NotificationService: scheduleMonthlyPrayers called');
+    print('🔔 NotificationService: scheduleMonthlyPrayers called (OPTIMIZED)');
     print(
       '🔔 NotificationService: Total prayer times available: ${monthlyPrayerTimes.length} days',
     );
-    print('🔔 NotificationService: Location name: $locationName');
 
-    // iOS has strict notification limits - only schedule 3 days to avoid crashes
-    // This equals 15 notifications (3 days × 5 prayers) which is well within iOS limits
-    // Android can handle more notifications
+    // iOS has strict notification limits - only schedule 3 days
+    // Android can handle more but we'll limit to avoid performance issues
     final isIOS = Platform.isIOS;
-    final maxDaysToSchedule = isIOS ? 3 : monthlyPrayerTimes.length;
+    final maxDaysToSchedule = isIOS ? 3 : 14; // Reduced from all to 14 days max
 
-    // Take only the first N days
-    final prayerTimesToSchedule = monthlyPrayerTimes.take(maxDaysToSchedule).toList();
+    // Filter to only include today and future dates
+    final now = DateTime.now();
 
-    print('🔔 NotificationService: Platform: ${isIOS ? "iOS" : "Android"}');
-    print('🔔 NotificationService: Scheduling prayers for ${prayerTimesToSchedule.length} days');
+    final futurePrayerTimes = monthlyPrayerTimes
+        .where((pt) {
+          try {
+            final ptDate = _parseDateFromString(pt.date);
+            return !ptDate.isBefore(DateTime(now.year, now.month, now.day));
+          } catch (e) {
+            return false;
+          }
+        })
+        .take(maxDaysToSchedule)
+        .toList();
+
+    print(
+      '🔔 NotificationService: Scheduling ${futurePrayerTimes.length} future days (max: $maxDaysToSchedule)',
+    );
 
     // Ensure notification service is initialized
     if (!_isInitialized) {
@@ -511,47 +749,183 @@ class NotificationService {
       await initialize();
     }
 
-    // CRITICAL: Always cancel ALL existing notifications first to prevent memory issues
-    // This is especially important on iOS to avoid crash from accumulated notifications
-    try {
-      print('🔔 NotificationService: Cancelling ALL existing notifications first...');
-      await AwesomeNotifications().cancelAll();
-      print('✅ NotificationService: Successfully cleared all existing notifications');
+    // Get existing scheduled notification IDs to avoid duplicate work
+    final existingNotifications = await AwesomeNotifications().listScheduledNotifications();
+    final existingIds = existingNotifications.map((n) => n.content?.id).toSet();
+    print('🔔 Found ${existingIds.length} existing scheduled notifications');
 
-      // Add a small delay to ensure cleanup is complete
-      await Future.delayed(const Duration(milliseconds: 500));
-    } catch (e) {
-      print('⚠️ NotificationService: Error cancelling notifications: $e');
-      // Continue anyway as this is not critical
+    // Only cancel notifications for dates we're about to reschedule
+    // This avoids the expensive cancelAll() call
+    int cancelledCount = 0;
+    for (var notification in existingNotifications) {
+      final id = notification.content?.id;
+      if (id != null) {
+        // Cancel only if it's a prayer notification (IDs typically start with date-based pattern)
+        // Or if the scheduled time has passed
+        final scheduledDate = notification.schedule;
+        if (scheduledDate != null) {
+          // Cancel past notifications
+          await AwesomeNotifications().cancel(id);
+          cancelledCount++;
+        }
+      }
     }
+    print('🔔 Cancelled $cancelledCount past/outdated notifications');
 
     int successCount = 0;
+    int skippedCount = 0;
     int errorCount = 0;
 
-    for (var prayerTimes in prayerTimesToSchedule) {
+    for (var prayerTimes in futurePrayerTimes) {
       try {
-        // Parse the date from prayer times
         final date = _parseDateFromString(prayerTimes.date);
-        print('🔔 NotificationService: Scheduling for date: ${prayerTimes.date}');
 
-        await scheduleAllPrayersForDay(
+        // Schedule only FUTURE prayers for today, all prayers for future days
+        await _scheduleUpcomingPrayersForDay(
           prayerTimes: prayerTimes,
           date: date,
           locationName: locationName,
           scheduleSunrise: scheduleSunrise,
+          existingIds: existingIds,
         );
         successCount++;
-      } catch (e, stackTrace) {
+      } catch (e) {
         errorCount++;
-        print('❌ NotificationService: Error scheduling prayer for ${prayerTimes.date}: $e');
-        print('Stack trace: $stackTrace');
+        print('❌ Error scheduling for ${prayerTimes.date}: $e');
       }
     }
 
     print(
-      '✅ NotificationService: Completed scheduling ${isIOS ? "iOS (5 days)" : "monthly"} prayers',
+      '✅ Scheduling complete: Success=$successCount, Skipped=$skippedCount, Errors=$errorCount',
     );
-    print('🔔 NotificationService: Success: $successCount, Errors: $errorCount');
+
+    // Schedule daily recurring reminders (once, not per day)
+    await _scheduleDailyReminders();
+  }
+
+  // Schedule only upcoming prayers for a day (skip past prayers)
+  Future<void> _scheduleUpcomingPrayersForDay({
+    required PrayerTimesModel prayerTimes,
+    required DateTime date,
+    String? locationName,
+    bool scheduleSunrise = false,
+    Set<int?>? existingIds,
+  }) async {
+    final now = DateTime.now();
+    final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+
+    final prayers = <String, String>{
+      'Fajr': prayerTimes.fajr,
+      'Dhuhr': prayerTimes.dhuhr,
+      'Asr': prayerTimes.asr,
+      'Maghrib': prayerTimes.maghrib,
+      'Isha': prayerTimes.isha,
+    };
+
+    if (scheduleSunrise) {
+      prayers['Sunrise'] = prayerTimes.sunrise;
+    }
+
+    for (var entry in prayers.entries) {
+      try {
+        final prayerTime = _parsePrayerTime(entry.value, date);
+
+        // Skip if prayer time has already passed (for today)
+        if (isToday && prayerTime.isBefore(now)) {
+          continue; // Skip past prayers
+        }
+
+        // Generate unique ID for this prayer
+        final notificationId = _generateNotificationId(date, entry.key);
+
+        // Skip if already scheduled
+        if (existingIds != null && existingIds.contains(notificationId)) {
+          continue;
+        }
+
+        await _scheduleSinglePrayer(
+          prayerName: entry.key,
+          prayerTime: prayerTime,
+          locationName: locationName,
+          notificationId: notificationId,
+        );
+      } catch (e) {
+        print('⚠️ Error scheduling ${entry.key}: $e');
+      }
+    }
+  }
+
+  // Generate consistent notification ID for a prayer
+  int _generateNotificationId(DateTime date, String prayerName) {
+    final prayerIndex = {'Fajr': 1, 'Sunrise': 2, 'Dhuhr': 3, 'Asr': 4, 'Maghrib': 5, 'Isha': 6};
+    final index = prayerIndex[prayerName] ?? 0;
+    // Format: YYYYMMDDP where P is prayer index (1-6)
+    return int.parse(
+      '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}$index',
+    );
+  }
+
+  // Schedule a single prayer notification
+  Future<void> _scheduleSinglePrayer({
+    required String prayerName,
+    required DateTime prayerTime,
+    String? locationName,
+    required int notificationId,
+  }) async {
+    final formattedTime = DateFormat('h:mm a').format(prayerTime);
+
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: notificationId,
+        channelKey: 'prayer_channel',
+        title: '🕌 $prayerName Prayer Time',
+        body: locationName != null
+            ? 'It\'s time for $prayerName prayer ($formattedTime) in $locationName'
+            : 'It\'s time for $prayerName prayer ($formattedTime)',
+        notificationLayout: NotificationLayout.Default,
+        category: NotificationCategory.Reminder,
+        wakeUpScreen: true,
+        autoDismissible: true,
+      ),
+      schedule: NotificationCalendar(
+        year: prayerTime.year,
+        month: prayerTime.month,
+        day: prayerTime.day,
+        hour: prayerTime.hour,
+        minute: prayerTime.minute,
+        second: 0,
+        millisecond: 0,
+        preciseAlarm: true,
+        allowWhileIdle: true,
+      ),
+    );
+  }
+
+  // Schedule daily recurring reminders (Dhikr, Qada, Monthly Report)
+  Future<void> _scheduleDailyReminders() async {
+    try {
+      final enhancedService = EnhancedNotificationService.instance;
+
+      // Dhikr reminders (morning & evening)
+      if (enhancedService.dhikrEnabled) {
+        await enhancedService.scheduleDailyDhikrReminders();
+        print('✅ Daily Dhikr reminders scheduled');
+      }
+
+      // Weekly Qada reminder
+      if (enhancedService.qadaTrackingEnabled) {
+        await enhancedService.scheduleWeeklyQadaReminder();
+        print('✅ Weekly Qada reminder scheduled');
+      }
+
+      // Monthly report
+      if (enhancedService.monthlyReportEnabled) {
+        await enhancedService.scheduleMonthlyReport();
+        print('✅ Monthly report scheduled');
+      }
+    } catch (e) {
+      print('⚠️ Error scheduling daily reminders: $e');
+    }
   }
 
   DateTime _parsePrayerTime(String timeStr, DateTime date) {

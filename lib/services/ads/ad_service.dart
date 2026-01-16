@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class AdService extends GetxController {
@@ -90,9 +91,19 @@ class AdService extends GetxController {
   int _screenNavigationCount = 0;
   bool _isInterstitialShowing = false;
 
+  // Daily interstitial ad limit (3 per day, reset at 5 AM)
+  final GetStorage _storage = GetStorage();
+  static const int _maxInterstitialAdsPerDay = 3;
+  static const int _resetHour = 5; // 5 AM reset time
+
+  // Storage keys
+  static const String _keyAdCount = 'daily_interstitial_count';
+  static const String _keyLastResetDate = 'last_ad_reset_date';
+
   @override
   Future<void> onInit() async {
     super.onInit();
+    _checkAndResetDailyLimit();
     await _initializeAds();
   }
 
@@ -331,6 +342,13 @@ class AdService extends GetxController {
       return;
     }
 
+    // Check daily limit (3 ads per day)
+    if (_hasReachedDailyLimit()) {
+      print('⛔ Daily interstitial ad limit reached (3/3). Skipping ad.');
+      onAdClosed?.call();
+      return;
+    }
+
     if (_isInterstitialShowing) {
       print('⚠️ Interstitial ad already showing, skipping...');
       onAdClosed?.call();
@@ -363,6 +381,7 @@ class AdService extends GetxController {
         },
         onAdShowedFullScreenContent: (ad) {
           print('📺 Interstitial ad showing full screen content');
+          _incrementDailyAdCount(); // Increment count when ad is shown
         },
       );
 
@@ -373,10 +392,87 @@ class AdService extends GetxController {
     }
   }
 
+  /// Check and reset daily interstitial ad limit at 5 AM
+  void _checkAndResetDailyLimit() {
+    final now = DateTime.now();
+    final lastResetDateStr = _storage.read<String>(_keyLastResetDate);
+
+    if (lastResetDateStr == null) {
+      // First time - initialize
+      _storage.write(_keyAdCount, 0);
+      _storage.write(_keyLastResetDate, _getResetDateKey(now));
+      print('🔄 Initialized daily ad limit tracker');
+      return;
+    }
+
+    final lastResetDate = DateTime.parse(lastResetDateStr);
+    final nextResetTime = _getNextResetTime(lastResetDate);
+
+    // Check if we've passed the next reset time (5 AM)
+    if (now.isAfter(nextResetTime)) {
+      _storage.write(_keyAdCount, 0);
+      _storage.write(_keyLastResetDate, _getResetDateKey(now));
+      print(
+        '🔄 Daily ad limit reset at ${now.hour}:${now.minute} - Count: 0/$_maxInterstitialAdsPerDay',
+      );
+    } else {
+      final currentCount = _storage.read<int>(_keyAdCount) ?? 0;
+      print(
+        '📊 Current daily ad count: $currentCount/$_maxInterstitialAdsPerDay (Resets at 5:00 AM)',
+      );
+    }
+  }
+
+  /// Get the next 5 AM reset time from a given date
+  DateTime _getNextResetTime(DateTime from) {
+    var resetTime = DateTime(from.year, from.month, from.day, _resetHour, 0, 0);
+
+    // If current time is past today's reset time, schedule for tomorrow
+    if (from.hour >= _resetHour) {
+      resetTime = resetTime.add(const Duration(days: 1));
+    }
+
+    return resetTime;
+  }
+
+  /// Get a date key for storage (format: YYYY-MM-DD)
+  String _getResetDateKey(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Check if daily interstitial ad limit has been reached
+  bool _hasReachedDailyLimit() {
+    _checkAndResetDailyLimit(); // Check for reset first
+    final currentCount = _storage.read<int>(_keyAdCount) ?? 0;
+    return currentCount >= _maxInterstitialAdsPerDay;
+  }
+
+  /// Increment daily interstitial ad count
+  void _incrementDailyAdCount() {
+    _checkAndResetDailyLimit(); // Check for reset first
+    final currentCount = _storage.read<int>(_keyAdCount) ?? 0;
+    final newCount = currentCount + 1;
+    _storage.write(_keyAdCount, newCount);
+    print('📈 Daily ad count increased: $newCount/$_maxInterstitialAdsPerDay');
+  }
+
+  /// Get remaining interstitial ads for today
+  int getRemainingAdsToday() {
+    _checkAndResetDailyLimit();
+    final currentCount = _storage.read<int>(_keyAdCount) ?? 0;
+    return (_maxInterstitialAdsPerDay - currentCount).clamp(0, _maxInterstitialAdsPerDay);
+  }
+
   /// Check if enough time has passed to show interstitial ad
   bool shouldShowInterstitialAdByTime() {
     // Don't show if ads are disabled
     if (_disableAdsForStore) return false;
+
+    // Don't show if daily limit reached
+    if (_hasReachedDailyLimit()) {
+      print('⛔ Daily interstitial ad limit reached (3/3). Will reset at 5:00 AM.');
+      return false;
+    }
 
     // Don't show if already showing
     if (_isInterstitialShowing) return false;
@@ -528,12 +624,34 @@ class AdService extends GetxController {
     _loadBottomBannerAd();
   }
 
+  // Cleanup method for explicit resource disposal
+  void disposeAds() {
+    print('🗑️ Disposing AdService ads...');
+
+    _bannerAd?.dispose();
+    _bannerAd = null;
+
+    _bottomBannerAd?.dispose();
+    _bottomBannerAd = null;
+
+    _interstitialAd?.dispose();
+    _interstitialAd = null;
+
+    _rewardedAd?.dispose();
+    _rewardedAd = null;
+
+    // Reset states
+    isBannerAdLoaded.value = false;
+    isBottomBannerAdLoaded.value = false;
+    isInterstitialAdLoaded.value = false;
+    isRewardedAdLoaded.value = false;
+
+    print('✅ AdService disposed - all ads cleaned up');
+  }
+
   @override
   void onClose() {
-    _bannerAd?.dispose();
-    _bottomBannerAd?.dispose();
-    _interstitialAd?.dispose();
-    _rewardedAd?.dispose();
+    disposeAds();
     super.onClose();
   }
 }

@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../controllers/quran_controller/quran_controller.dart';
 import '../../widgets/shimmer_widget/shimmer_loading_widgets.dart';
+import '../../widgets/quran_audio_player.dart';
 
 class QuranReaderScreen extends StatelessWidget {
   const QuranReaderScreen({super.key});
@@ -55,6 +56,9 @@ class QuranReaderScreen extends StatelessWidget {
                   },
                 ),
               ),
+
+              // Audio Player at bottom
+              const QuranAudioPlayer(),
             ],
           ),
         );

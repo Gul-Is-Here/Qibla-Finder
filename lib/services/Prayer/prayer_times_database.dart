@@ -148,19 +148,51 @@ class PrayerTimesDatabase {
 
   // Get prayer times for a specific date and location
   Future<PrayerTimesModel?> getPrayerTimes(String date, double latitude, double longitude) async {
-    final db = await database;
+    try {
+      final db = await database;
 
-    final maps = await db.query(
-      'prayer_times',
-      where: 'date = ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
-      whereArgs: [date, latitude, longitude],
-      limit: 1,
-    );
+      print('🔍 Querying database:');
+      print('   Date: $date');
+      print('   Latitude: $latitude');
+      print('   Longitude: $longitude');
 
-    if (maps.isNotEmpty) {
-      return PrayerTimesModel.fromDatabase(maps.first);
+      final maps = await db.query(
+        'prayer_times',
+        where: 'date = ? AND ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
+        whereArgs: [date, latitude, longitude],
+        limit: 1,
+      );
+
+      if (maps.isNotEmpty) {
+        print('✅ Found prayer times in database for date: $date');
+        return PrayerTimesModel.fromDatabase(maps.first);
+      } else {
+        print('⚠️ No prayer times found in database for date: $date');
+
+        // Try to find any data for nearby dates (fallback)
+        final allMaps = await db.query(
+          'prayer_times',
+          where: 'ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
+          whereArgs: [latitude, longitude],
+          orderBy: 'date DESC',
+          limit: 5,
+        );
+
+        if (allMaps.isNotEmpty) {
+          print('📊 Found ${allMaps.length} cached entries for this location:');
+          for (var map in allMaps) {
+            print('   - Date: ${map['date']}');
+          }
+        } else {
+          print('❌ No cached data found for this location at all');
+        }
+      }
+
+      return null;
+    } catch (e) {
+      print('❌ Error querying database: $e');
+      return null;
     }
-    return null;
   }
 
   // Get monthly prayer times
@@ -227,16 +259,89 @@ class PrayerTimesDatabase {
     );
   }
 
+  // Get ANY available prayer times for location (ignoring date)
+  // Used as last resort fallback when offline
+  Future<PrayerTimesModel?> getAnyAvailablePrayerTimes(double latitude, double longitude) async {
+    try {
+      final db = await database;
+
+      print('🔍 Searching for ANY cached prayer times near location...');
+
+      // Get the most recent entry for this location
+      final maps = await db.query(
+        'prayer_times',
+        where: 'ABS(latitude - ?) < 0.1 AND ABS(longitude - ?) < 0.1',
+        whereArgs: [latitude, longitude],
+        orderBy: 'date DESC',
+        limit: 1,
+      );
+
+      if (maps.isNotEmpty) {
+        print('✅ Found cached prayer times from date: ${maps.first['date']}');
+        return PrayerTimesModel.fromDatabase(maps.first);
+      }
+
+      // If no exact location match, try wider search (0.5 degree ~ 50km)
+      final widerMaps = await db.query(
+        'prayer_times',
+        where: 'ABS(latitude - ?) < 0.5 AND ABS(longitude - ?) < 0.5',
+        whereArgs: [latitude, longitude],
+        orderBy: 'date DESC',
+        limit: 1,
+      );
+
+      if (widerMaps.isNotEmpty) {
+        print('✅ Found nearby cached prayer times (within ~50km) from: ${widerMaps.first['date']}');
+        return PrayerTimesModel.fromDatabase(widerMaps.first);
+      }
+
+      // Last resort: get any data at all
+      final anyMaps = await db.query('prayer_times', orderBy: 'date DESC', limit: 1);
+
+      if (anyMaps.isNotEmpty) {
+        print(
+          '⚠️ Using fallback prayer times from ${anyMaps.first['location_name'] ?? 'unknown location'}',
+        );
+        return PrayerTimesModel.fromDatabase(anyMaps.first);
+      }
+
+      print('❌ No prayer times in database at all');
+      return null;
+    } catch (e) {
+      print('❌ Error searching for any available data: $e');
+      return null;
+    }
+  }
+
+  // Get total count of cached entries
+  Future<int> getCachedCount() async {
+    try {
+      final db = await database;
+      final result = await db.rawQuery('SELECT COUNT(*) as count FROM prayer_times');
+      return result.first['count'] as int? ?? 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   // Clear all data
   Future<int> clearAll() async {
     final db = await database;
     return await db.delete('prayer_times');
   }
 
-  // Close database
-  Future close() async {
-    final db = await database;
-    db.close();
+  // Close database connection and clean up
+  Future<void> close() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+      print('✅ Database connection closed and cleaned up');
+    }
+  }
+
+  // Dispose method for explicit cleanup
+  Future<void> dispose() async {
+    await close();
   }
 
   String _formatDate(DateTime date) {

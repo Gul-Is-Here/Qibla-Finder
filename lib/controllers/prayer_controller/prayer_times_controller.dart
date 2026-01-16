@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -35,7 +36,9 @@ class PrayerTimesController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initializePrayerTimes();
+    // DEFERRED: Run initialization after frame is rendered
+    Future.microtask(() => _initializePrayerTimes());
+    // These are lightweight, can run immediately
     _checkNotificationStatus();
     _setupConnectivityListener();
   }
@@ -85,8 +88,10 @@ class PrayerTimesController extends GetxController {
   }
 
   Future<void> _initializePrayerTimes() async {
+    // Run these in parallel instead of sequentially
     await fetchPrayerTimes();
-    await fetchAndCacheMonthlyPrayerTimes();
+    // Don't await monthly data - let it load in background
+    fetchAndCacheMonthlyPrayerTimes();
     _startNextPrayerTimer();
   }
 
@@ -208,6 +213,8 @@ class PrayerTimesController extends GetxController {
 
       // STEP 1: Always load from database first (instant display)
       final dateStr = _formatDate(selectedDate.value);
+      print('📅 Formatted date for query: $dateStr');
+
       final cachedTimes = await _database.getPrayerTimes(
         dateStr,
         position!.latitude,
@@ -220,15 +227,23 @@ class PrayerTimesController extends GetxController {
         nextPrayer.value = cachedTimes.getNextPrayer();
         locationName.value = cachedTimes.location ?? 'Unknown Location';
         print('✅ Loaded prayer times from local database');
+        print('   Location: ${locationName.value}');
+        print('   Fajr: ${cachedTimes.fajr}');
 
-        // Stop loading indicator since we have data to show
+        // Stop loading immediately - no shimmer delay for returning users
+        // Data is already available from cache
         isLoading.value = false;
 
         // STEP 2: If online, update in background (don't block UI)
         if (isOnline.value) {
+          print('🌐 Online - will sync in background');
           _syncPrayerTimesInBackground(position, selectedDate.value);
+        } else {
+          print('📴 Offline - using cached data only');
         }
       } else {
+        print('⚠️ No cached data found for date: $dateStr');
+
         // No cached data - need to fetch from API
         if (isOnline.value) {
           print('📥 No cached data, fetching from API...');
@@ -259,14 +274,37 @@ class PrayerTimesController extends GetxController {
             print('✅ Successfully fetched and saved to local database');
           } else {
             errorMessage.value = 'Failed to fetch prayer times. Please try again.';
+            print('❌ Failed to fetch prayer times from API');
           }
         } else {
-          // Offline and no cache
-          errorMessage.value =
-              'No internet connection.\n'
-              'Prayer times not available offline.\n'
-              'Please connect to internet.';
-          print('❌ No cached data and offline');
+          // Offline and no cache - try to find nearest available data
+          print('📴 Offline with no cached data for today');
+
+          // Try to get any available data from database
+          final anyAvailableData = await _getAnyAvailableData(position);
+
+          if (anyAvailableData != null) {
+            prayerTimes.value = anyAvailableData;
+            nextPrayer.value = anyAvailableData.getNextPrayer();
+            locationName.value = anyAvailableData.location ?? 'Unknown Location';
+            isLoading.value = false;
+
+            Get.snackbar(
+              'Offline Mode',
+              'Showing prayer times from ${anyAvailableData.date}.\nConnect to internet for today\'s times.',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 5),
+            );
+            print('✅ Loaded alternative cached data from: ${anyAvailableData.date}');
+          } else {
+            errorMessage.value =
+                'No internet connection.\n'
+                'Prayer times not available offline.\n'
+                'Please connect to internet.';
+            print('❌ No cached data available at all');
+          }
         }
       }
     } catch (e) {
@@ -671,5 +709,62 @@ class PrayerTimesController extends GetxController {
     return selectedDate.value.year == now.year &&
         selectedDate.value.month == now.month &&
         selectedDate.value.day == now.day;
+  }
+
+  /// Get any available cached data for the location (fallback when no exact date match)
+  Future<PrayerTimesModel?> _getAnyAvailableData(Position position) async {
+    try {
+      print('🔍 Searching for any available offline data...');
+
+      // First try: Search ±7 days from today
+      final today = DateTime.now();
+
+      // Try last 7 days
+      for (int i = 0; i < 7; i++) {
+        final checkDate = today.subtract(Duration(days: i));
+        final dateStr = _formatDate(checkDate);
+
+        final data = await _database.getPrayerTimes(dateStr, position.latitude, position.longitude);
+
+        if (data != null) {
+          print('✅ Found cached data from $dateStr ($i days ago)');
+          return data;
+        }
+      }
+
+      // Try next 7 days
+      for (int i = 1; i <= 7; i++) {
+        final checkDate = today.add(Duration(days: i));
+        final dateStr = _formatDate(checkDate);
+
+        final data = await _database.getPrayerTimes(dateStr, position.latitude, position.longitude);
+
+        if (data != null) {
+          print('✅ Found cached data from $dateStr ($i days ahead)');
+          return data;
+        }
+      }
+
+      // Second try: Get ANY available data from database (last resort)
+      print('⚠️ No data within 7 days, trying ANY available data...');
+      final anyData = await _database.getAnyAvailablePrayerTimes(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (anyData != null) {
+        print('✅ Found fallback data from: ${anyData.date}');
+        return anyData;
+      }
+
+      // Log database status for debugging
+      final cachedCount = await _database.getCachedCount();
+      print('❌ No cached data found. Total entries in database: $cachedCount');
+
+      return null;
+    } catch (e) {
+      print('❌ Error getting any available data: $e');
+      return null;
+    }
   }
 }

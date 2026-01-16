@@ -11,57 +11,73 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import '../../models/quran_model/quran_model.dart';
 import '../../services/Quran/quran_service.dart';
+import '../../services/Quran/offline_quran_service.dart';
+import '../../services/connectivity/connectivity_service.dart';
 
-// Simple audio handler for background playbook
+// Enhanced audio handler for background playback with full notification controls
 class _QuranAudioHandler extends BaseAudioHandler {
   final AudioPlayer _player;
+  final Function()? onNext;
+  final Function()? onPrevious;
+  final Function()? onStop;
 
-  _QuranAudioHandler(this._player) {
-    // Initialize playback state
+  _QuranAudioHandler(this._player, {this.onNext, this.onPrevious, this.onStop}) {
+    // Initialize playback state with all controls
     playbackState.add(
       PlaybackState(
         controls: [
           MediaControl.skipToPrevious,
           MediaControl.play,
+          MediaControl.pause,
           MediaControl.skipToNext,
           MediaControl.stop,
         ],
         systemActions: const {MediaAction.seek, MediaAction.seekForward, MediaAction.seekBackward},
-        androidCompactActionIndices: const [0, 1, 2],
+        androidCompactActionIndices: const [0, 1, 3], // Previous, Play/Pause, Next
         processingState: AudioProcessingState.idle,
         playing: false,
+        // Removed repeatMode and shuffleMode as they're not constants
       ),
     );
 
     // Sync player state with audio service
     _player.playerStateStream.listen((state) {
+      final isPlaying = state.playing;
+      final processingState = {
+        ProcessingState.idle: AudioProcessingState.idle,
+        ProcessingState.loading: AudioProcessingState.loading,
+        ProcessingState.buffering: AudioProcessingState.buffering,
+        ProcessingState.ready: AudioProcessingState.ready,
+        ProcessingState.completed: AudioProcessingState.completed,
+      }[state.processingState]!;
+
       playbackState.add(
         playbackState.value.copyWith(
-          playing: state.playing,
-          processingState: {
-            ProcessingState.idle: AudioProcessingState.idle,
-            ProcessingState.loading: AudioProcessingState.loading,
-            ProcessingState.buffering: AudioProcessingState.buffering,
-            ProcessingState.ready: AudioProcessingState.ready,
-            ProcessingState.completed: AudioProcessingState.completed,
-          }[state.processingState]!,
+          playing: isPlaying,
+          processingState: processingState,
           controls: [
             MediaControl.skipToPrevious,
-            state.playing ? MediaControl.pause : MediaControl.play,
+            isPlaying ? MediaControl.pause : MediaControl.play,
             MediaControl.skipToNext,
             MediaControl.stop,
           ],
+          androidCompactActionIndices: const [0, 1, 2],
         ),
       );
     });
 
-    // Sync position
+    // Sync position and duration
     _player.positionStream.listen((position) {
-      playbackState.add(playbackState.value.copyWith(updatePosition: position));
+      playbackState.add(
+        playbackState.value.copyWith(
+          updatePosition: position,
+          bufferedPosition: _player.bufferedPosition,
+        ),
+      );
     });
   }
 
-  // Update current media item
+  // Update current media item with enhanced metadata
   void updateMedia(String surahName, int ayahNumber, int totalAyahs) {
     mediaItem.add(
       MediaItem(
@@ -69,7 +85,11 @@ class _QuranAudioHandler extends BaseAudioHandler {
         album: surahName,
         title: 'Ayah $ayahNumber of $totalAyahs',
         artist: 'Quran Recitation',
+        duration: _player.duration,
         artUri: Uri.parse('https://via.placeholder.com/200x200.png?text=Quran'),
+        displayTitle: 'Ayah $ayahNumber',
+        displaySubtitle: surahName,
+        displayDescription: 'Quran Recitation - Ayah $ayahNumber of $totalAyahs',
       ),
     );
   }
@@ -116,25 +136,44 @@ class _QuranAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> skipToNext() async {
-    print('📱 Audio service: Skip to next requested');
-    // Implement next surah logic if needed
+    print('📱 Audio service: Skip to next ayah requested');
+    if (onNext != null) {
+      onNext!();
+    }
   }
 
   @override
   Future<void> skipToPrevious() async {
-    print('📱 Audio service: Skip to previous requested');
-    // Implement previous surah logic if needed
+    print('📱 Audio service: Skip to previous ayah requested');
+    if (onPrevious != null) {
+      onPrevious!();
+    }
+  }
+
+  @override
+  Future<void> customAction(String name, [Map<String, dynamic>? extras]) async {
+    print('📱 Audio service: Custom action $name');
+    if (name == 'stopService') {
+      if (onStop != null) {
+        onStop!();
+      }
+    }
   }
 }
 
 class QuranController extends GetxController {
   final QuranService _quranService = QuranService();
+  final OfflineQuranService _offlineQuranService = OfflineQuranService.instance;
+  final ConnectivityService _connectivityService = ConnectivityService();
   final AudioPlayer _audioPlayer = AudioPlayer();
   final ScrollController scrollController = ScrollController();
   AudioHandler? _audioHandler;
 
   // Public getter for QuranService
   QuranService get quranService => _quranService;
+
+  // Track if using offline mode
+  var isOfflineMode = false.obs;
 
   // Observable state
   var isLoading = false.obs;
@@ -174,22 +213,50 @@ class QuranController extends GetxController {
   // Item keys for scrolling
   final Map<int, GlobalKey> ayahKeys = {};
 
+  // Track if initialized
+  bool _isFullyInitialized = false;
+
   @override
   void onInit() {
     super.onInit();
-    _initializeAudioService();
-    _initializeAudioListeners();
-    _initializeCacheDirectory();
-    loadSurahs();
+
+    // FAST: Only load essential data synchronously
     reciters.value = _quranService.getReciters();
     translations.value = _quranService.getTranslations();
 
-    // Load last read position from storage
+    // Load last read position from storage (fast)
     lastReadSurah.value = storage.read('lastReadSurah') ?? 1;
     lastReadAyah.value = storage.read('lastReadAyah') ?? 1;
 
-    // Add scroll listener to track current ayah while reading
-    _setupScrollListener();
+    // DEFERRED: Heavy operations run after UI is ready
+    Future.microtask(() => _initializeInBackground());
+  }
+
+  /// Initialize heavy services in background to avoid blocking main thread
+  Future<void> _initializeInBackground() async {
+    if (_isFullyInitialized) return;
+
+    try {
+      // Initialize audio service (can be slow)
+      await _initializeAudioService();
+
+      // Initialize audio listeners
+      _initializeAudioListeners();
+
+      // Initialize cache directory
+      await _initializeCacheDirectory();
+
+      // Load surahs in background (network call)
+      loadSurahs();
+
+      // Setup scroll listener
+      _setupScrollListener();
+
+      _isFullyInitialized = true;
+      print('✅ QuranController fully initialized in background');
+    } catch (e) {
+      print('⚠️ Error in background initialization: $e');
+    }
   }
 
   @override
@@ -235,39 +302,33 @@ class QuranController extends GetxController {
   Future<void> _initializeAudioService() async {
     try {
       _audioHandler = await AudioService.init(
-        builder: () => _QuranAudioHandler(_audioPlayer),
-        config: const AudioServiceConfig(
+        builder: () => _QuranAudioHandler(
+          _audioPlayer,
+          onNext: () => playNextAyah(),
+          onPrevious: () => playPreviousAyah(),
+          onStop: () => stopAudio(),
+        ),
+        config: AudioServiceConfig(
           androidNotificationChannelId: 'com.qibla.compass.quran',
           androidNotificationChannelName: 'Quran Audio',
           androidNotificationChannelDescription: 'Quran Recitation Audio Player',
-          androidNotificationOngoing: false,
-          androidStopForegroundOnPause: true,
+          androidNotificationOngoing: false, // Don't keep notification sticky
+          androidStopForegroundOnPause: false, // Keep notification visible when paused
           androidNotificationClickStartsActivity: true,
           androidNotificationIcon: 'mipmap/ic_launcher',
-          fastForwardInterval: Duration(seconds: 10),
-          rewindInterval: Duration(seconds: 10),
+          fastForwardInterval: const Duration(seconds: 10),
+          rewindInterval: const Duration(seconds: 10),
         ),
       );
-
-      // Listen to audio handler button presses
-      _audioHandler?.playbackState.listen((state) {
-        // Handle skip next/previous from notification
-        if (state.processingState == AudioProcessingState.ready) {
-          // Update UI state
-          isPlaying.value = state.playing;
-        }
-      });
 
       // Configure audio session for Quran playback
       final session = await AudioSession.instance;
       await session.configure(const AudioSessionConfiguration.music());
 
-      print('✅ Audio service initialized successfully');
+      print('✅ Audio service initialized with notification controls');
     } catch (e) {
       print('⚠️ Error initializing audio service: $e');
       print('📱 Continuing without background audio service...');
-      // Continue without background service if it fails
-      // The app will still work for foreground audio playback
     }
   }
 
@@ -362,12 +423,99 @@ class QuranController extends GetxController {
     try {
       isLoading.value = true;
       errorMessage.value = '';
+
+      // Check internet connectivity first
+      final hasInternet = await _connectivityService.hasConnection();
+
+      if (!hasInternet) {
+        print('📴 No internet connection - Loading offline Quran data...');
+
+        // Try to load from offline JSON
+        try {
+          final offlineAvailable = await _offlineQuranService.isOfflineDataAvailable();
+          if (offlineAvailable) {
+            surahs.value = await _offlineQuranService.getAllSurahs();
+            isOfflineMode.value = true;
+            print('✅ Loaded ${surahs.length} surahs from offline data');
+
+            Get.snackbar(
+              'Offline Mode',
+              'Viewing Quran offline. Audio not available.',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 3),
+            );
+            isLoading.value = false;
+            return;
+          }
+        } catch (offlineError) {
+          print('⚠️ Failed to load offline data: $offlineError');
+        }
+
+        // No offline data available
+        errorMessage.value = 'No internet connection.\nOffline Quran data not available.';
+        Get.snackbar(
+          'No Internet',
+          'Connect to internet to download Quran data.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+        isLoading.value = false;
+        return;
+      }
+
+      // Online - load from API
+      isOfflineMode.value = false;
       surahs.value = await _quranService.getAllSurahs();
+    } on SocketException catch (e) {
+      print('❌ Socket Exception: $e');
+      await _tryLoadOfflineSurahs();
+    } on http.ClientException catch (e) {
+      print('❌ Client Exception: $e');
+      await _tryLoadOfflineSurahs();
     } catch (e) {
-      errorMessage.value = 'Error loading surahs: $e';
-      Get.snackbar('Error', 'Failed to load surahs', snackPosition: SnackPosition.BOTTOM);
+      print('❌ Error loading surahs: $e');
+      await _tryLoadOfflineSurahs();
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Try to load surahs from offline data as fallback
+  Future<void> _tryLoadOfflineSurahs() async {
+    try {
+      final offlineAvailable = await _offlineQuranService.isOfflineDataAvailable();
+      if (offlineAvailable) {
+        surahs.value = await _offlineQuranService.getAllSurahs();
+        isOfflineMode.value = true;
+        errorMessage.value = '';
+        print('✅ Loaded surahs from offline data as fallback');
+
+        Get.snackbar(
+          'Offline Mode',
+          'Viewing Quran offline. Audio not available.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      } else {
+        errorMessage.value = 'No internet connection.\nOffline Quran data not available.';
+        Get.snackbar(
+          'Error',
+          'Failed to load Quran data.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+      }
+    } catch (e) {
+      print('❌ Failed to load offline surahs: $e');
+      errorMessage.value = 'Failed to load Quran data.';
     }
   }
 
@@ -394,7 +542,7 @@ class QuranController extends GetxController {
       // Try to load from cache first
       final cachedData = _getSurahFromCache(surahNumber);
       if (cachedData != null) {
-        print('📖 Loading Surah $surahNumber from cache (offline)');
+        print('📖 Loading Surah $surahNumber from cache');
         currentQuranData.value = cachedData;
         currentAyahIndex.value = 0;
         audioProgress.value = 0.0;
@@ -404,7 +552,17 @@ class QuranController extends GetxController {
         return;
       }
 
-      // Load from API if not cached
+      // Check internet connectivity before making API call
+      final hasInternet = await _connectivityService.hasConnection();
+
+      if (!hasInternet) {
+        // No internet and no cache - try offline JSON
+        print('📴 No internet - trying offline Quran data for Surah $surahNumber');
+        await _tryLoadOfflineSurah(surahNumber);
+        return;
+      }
+
+      // Load from API if online
       print('🌐 Loading Surah $surahNumber from API (online)');
       currentQuranData.value = await _quranService.getSurahWithTranslation(
         surahNumber,
@@ -418,34 +576,84 @@ class QuranController extends GetxController {
       audioProgress.value = 0.0;
       currentDuration.value = Duration.zero;
       totalDuration.value = Duration.zero;
+      isOfflineMode.value = false;
 
       // Pre-download all audio files in background
       _preDownloadSurahAudio(surahNumber);
+    } on SocketException catch (e) {
+      print('❌ Socket Exception: $e');
+      await _handleSurahLoadError(surahNumber);
+    } on http.ClientException catch (e) {
+      print('❌ Client Exception: $e');
+      await _handleSurahLoadError(surahNumber);
     } catch (e) {
-      errorMessage.value = 'Error loading surah: $e';
+      print('❌ Error loading surah: $e');
+      await _handleSurahLoadError(surahNumber);
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
-      // Try loading from cache as fallback
-      final cachedData = _getSurahFromCache(surahNumber);
-      if (cachedData != null) {
-        print('⚠️ API failed, using cached Surah $surahNumber');
-        currentQuranData.value = cachedData;
+  /// Handle surah load error - try cache then offline JSON
+  Future<void> _handleSurahLoadError(int surahNumber) async {
+    // Try loading from cache first
+    final cachedData = _getSurahFromCache(surahNumber);
+    if (cachedData != null) {
+      print('✅ Using cached Surah $surahNumber');
+      currentQuranData.value = cachedData;
+      currentAyahIndex.value = 0;
+      errorMessage.value = '';
+      return;
+    }
+
+    // Try offline JSON
+    await _tryLoadOfflineSurah(surahNumber);
+  }
+
+  /// Try to load surah from offline JSON data
+  Future<void> _tryLoadOfflineSurah(int surahNumber) async {
+    try {
+      final offlineAvailable = await _offlineQuranService.isOfflineDataAvailable();
+      if (offlineAvailable) {
+        currentQuranData.value = await _offlineQuranService.getSurahWithTranslation(surahNumber);
         currentAyahIndex.value = 0;
+        audioProgress.value = 0.0;
+        currentDuration.value = Duration.zero;
+        totalDuration.value = Duration.zero;
+        isOfflineMode.value = true;
+        errorMessage.value = '';
+
+        print('✅ Loaded Surah $surahNumber from offline JSON');
         Get.snackbar(
           'Offline Mode',
-          'Loaded from cache. Connect to internet for latest data.',
+          'Reading offline. Audio playback not available.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: const Color(0xFFFFB300),
+          backgroundColor: Colors.orange,
           colorText: Colors.white,
+          duration: const Duration(seconds: 3),
         );
       } else {
+        errorMessage.value = 'Surah not available offline.\nConnect to internet to download.';
         Get.snackbar(
-          'Error',
-          'Failed to load surah. Please check your connection.',
+          'Not Available Offline',
+          'Connect to internet to download this Surah.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.orange,
           colorText: Colors.white,
+          duration: const Duration(seconds: 3),
         );
       }
+    } catch (e) {
+      print('❌ Failed to load offline surah: $e');
+      errorMessage.value = 'Surah not available offline.\nConnect to internet to download.';
+      Get.snackbar(
+        'Not Available',
+        'This Surah is not available offline.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+      );
     } finally {
       isLoading.value = false;
     }
@@ -558,6 +766,30 @@ class QuranController extends GetxController {
   Future<void> playAyah(int ayahIndex) async {
     try {
       if (currentQuranData.value == null) return;
+
+      // Check if in offline mode - audio not available
+      if (isOfflineMode.value) {
+        // Check if audio is cached even in offline mode
+        final quranData = currentQuranData.value!;
+        final ayah = quranData.ayahs[ayahIndex];
+        final isCached = await _isAudioCached(
+          quranData.surah.number,
+          ayah.numberInSurah,
+          selectedReciter.value,
+        );
+
+        if (!isCached) {
+          Get.snackbar(
+            'Audio Not Available',
+            'Audio playback requires internet connection or pre-downloaded audio.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3),
+          );
+          return;
+        }
+      }
 
       final quranData = currentQuranData.value!;
       if (ayahIndex < 0 || ayahIndex >= quranData.ayahs.length) return;

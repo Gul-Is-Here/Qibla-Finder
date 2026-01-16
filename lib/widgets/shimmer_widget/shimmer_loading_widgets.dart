@@ -7,34 +7,522 @@ class ShimmerLoadingWidgets {
   static const Color baseColor = Color(0xFFE8E4F3); // Light purple background
   static const Color highlightColor = Color(0xFFF5F0FF); // Very light purple highlight
   static const Color purpleAccent = Color(0xFF8F66FF); // Main purple for accents
+  static const Color darkPurple = Color(0xFF2D1B69); // Dark purple
 
-  /// Shimmer for Prayer Times Screen
+  /// Shimmer for Prayer Times Screen - Modern Design
   static Widget prayerTimesShimmer() {
-    return SingleChildScrollView(
+    return Container(
+      color: const Color(0xFFF5F3FF),
       child: Column(
         children: [
-          const SizedBox(height: 12),
+          // Header Shimmer (matching the purple header)
+          _modernHeaderShimmer(),
 
-          // Next Prayer Card Shimmer
-          _nextPrayerCardShimmer(),
+          // Content
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
 
-          const SizedBox(height: 16),
+                  // Next Prayer Top Card Shimmer
+                  _modernNextPrayerCardShimmer(),
 
-          // Date Navigator Shimmer
-          _dateNavigatorShimmer(),
+                  const SizedBox(height: 20),
 
-          const SizedBox(height: 16),
+                  // Prayer Times Horizontal Card Shimmer
+                  _prayerTimesHeaderShimmer(),
+                  const SizedBox(height: 12),
+                  _horizontalPrayerTimesShimmer(),
 
-          // Prayer Tiles Shimmer (6 prayers)
-          ...List.generate(6, (index) => _prayerTileShimmer()),
+                  const SizedBox(height: 24),
 
-          const SizedBox(height: 28),
+                  // Daily Verse Card Shimmer
+                  _dailyVerseShimmer(),
+
+                  const SizedBox(height: 24),
+
+                  // Quick Actions Shimmer
+                  _quickActionsShimmer(),
+
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// Next Prayer Card Shimmer
+  /// Modern Header Shimmer matching the purple gradient header
+  static Widget _modernHeaderShimmer() {
+    return Container(
+      padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 16),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [purpleAccent, purpleAccent, darkPurple],
+          stops: [0.0, 0.3, 1.0],
+        ),
+      ),
+      child: Shimmer.fromColors(
+        baseColor: Colors.white.withOpacity(0.15),
+        highlightColor: Colors.white.withOpacity(0.4),
+        child: Row(
+          children: [
+            // Mosque icon placeholder
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.3),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Location text placeholder
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 16,
+                    width: 140,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 12,
+                    width: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Notification icon placeholder
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Modern Next Prayer Card Shimmer
+  static Widget _modernNextPrayerCardShimmer() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [purpleAccent.withOpacity(0.9), darkPurple.withOpacity(0.8)],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFD4AF37).withOpacity(0.5), width: 2),
+        ),
+        child: Shimmer.fromColors(
+          baseColor: Colors.white.withOpacity(0.1),
+          highlightColor: Colors.white.withOpacity(0.3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Sunrise/Sunset row
+              Row(
+                children: [
+                  Expanded(child: _sunTimeShimmerItem()),
+                  const SizedBox(width: 12),
+                  Expanded(child: _sunTimeShimmerItem()),
+                ],
+              ),
+              const SizedBox(height: 20),
+              // Next prayer name
+              Container(
+                height: 28,
+                width: 180,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Time row
+              Row(
+                children: [
+                  Container(
+                    height: 24,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  const Spacer(),
+                  // Remaining time
+                  Column(
+                    children: [
+                      Container(
+                        height: 10,
+                        width: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        height: 14,
+                        width: 70,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Share and View Times links
+              Row(
+                children: [
+                  Container(
+                    height: 16,
+                    width: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Container(
+                    height: 16,
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _sunTimeShimmerItem() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 10,
+                width: 50,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                height: 14,
+                width: 60,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Prayer Times Header Shimmer
+  static Widget _prayerTimesHeaderShimmer() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        child: Container(
+          height: 14,
+          width: 100,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+        ),
+      ),
+    );
+  }
+
+  /// Horizontal Prayer Times Card Shimmer
+  static Widget _horizontalPrayerTimesShimmer() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              purpleAccent.withOpacity(0.9),
+              darkPurple.withOpacity(0.85),
+              const Color(0xFF9F70FF).withOpacity(0.8),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFAB80FF).withOpacity(0.4), width: 1.5),
+        ),
+        child: Shimmer.fromColors(
+          baseColor: Colors.white.withOpacity(0.1),
+          highlightColor: Colors.white.withOpacity(0.3),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(5, (index) => _prayerDotShimmer()),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _prayerDotShimmer() {
+    return Column(
+      children: [
+        // Dot
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.5), shape: BoxShape.circle),
+        ),
+        const SizedBox(height: 8),
+        // Name
+        Container(
+          height: 12,
+          width: 40,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+        ),
+        const SizedBox(height: 6),
+        // Time
+        Container(
+          height: 10,
+          width: 50,
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+        ),
+      ],
+    );
+  }
+
+  /// Daily Verse Shimmer
+  static Widget _dailyVerseShimmer() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: purpleAccent.withOpacity(0.3), width: 1.5),
+          ),
+          child: Column(
+            children: [
+              // Header row
+              Row(
+                children: [
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    height: 14,
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Arabic text
+              Container(
+                height: 24,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Translation
+              Container(
+                height: 16,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                height: 16,
+                width: 200,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Reference
+              Container(
+                height: 12,
+                width: 120,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Quick Actions Shimmer
+  static Widget _quickActionsShimmer() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Shimmer.fromColors(
+            baseColor: baseColor,
+            highlightColor: highlightColor,
+            child: Container(
+              height: 16,
+              width: 100,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Grid of cards
+          Row(
+            children: [
+              Expanded(child: _quickActionCardShimmer()),
+              const SizedBox(width: 10),
+              Expanded(child: _quickActionCardShimmer()),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _quickActionCardShimmer()),
+              const SizedBox(width: 10),
+              Expanded(child: _quickActionCardShimmer()),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _quickActionCardShimmer() {
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey[200]!, width: 1),
+        ),
+        child: Row(
+          children: [
+            // Icon
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Text
+            Expanded(
+              child: Container(
+                height: 14,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Arrow
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ========== OLD SHIMMER METHODS (kept for backward compatibility) ==========
+
+  /// Next Prayer Card Shimmer (legacy)
   static Widget _nextPrayerCardShimmer() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -99,7 +587,7 @@ class ShimmerLoadingWidgets {
     );
   }
 
-  /// Date Navigator Shimmer
+  /// Date Navigator Shimmer (legacy)
   static Widget _dateNavigatorShimmer() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -114,7 +602,7 @@ class ShimmerLoadingWidgets {
     );
   }
 
-  /// Prayer Tile Shimmer
+  /// Prayer Tile Shimmer (legacy)
   static Widget _prayerTileShimmer() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),

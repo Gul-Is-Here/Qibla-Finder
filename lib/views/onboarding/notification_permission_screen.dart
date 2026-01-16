@@ -99,6 +99,12 @@ class NotificationPermissionScreen extends StatelessWidget {
                   title: 'Daily Reminders',
                   description: 'Never forget to pray',
                 ),
+                const SizedBox(height: 16),
+                _buildFeature(
+                  icon: Icons.ads_click_rounded,
+                  title: 'Minimal Ads',
+                  description: 'Only 3 short ads per day',
+                ),
 
                 const SizedBox(height: 40),
 

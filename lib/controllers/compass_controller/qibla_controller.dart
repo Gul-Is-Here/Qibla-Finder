@@ -57,6 +57,11 @@ class QiblaController extends GetxController {
   StreamSubscription<Position>? _locationSubscription;
   StreamSubscription<bool>? _connectivitySubscription;
 
+  // Compass state management
+  var isCompassPaused = false.obs;
+  DateTime? _lastCompassUpdate;
+  int _compassUpdateInterval = 100; // milliseconds, adaptive
+
   final storage = GetStorage();
 
   @override
@@ -421,10 +426,39 @@ class QiblaController extends GetxController {
 
     _compassSubscription = FlutterCompass.events?.listen(
       (event) async {
+        // Adaptive refresh rate - throttle updates based on movement
+        final now = DateTime.now();
+        if (_lastCompassUpdate != null) {
+          final timeSinceLastUpdate = now.difference(_lastCompassUpdate!).inMilliseconds;
+
+          // Skip update if too frequent (adaptive throttling)
+          if (timeSinceLastUpdate < _compassUpdateInterval) {
+            return;
+          }
+        }
+        _lastCompassUpdate = now;
+
+        // Store old heading for comparison
+        final oldHeading = heading.value;
         heading.value = event.heading ?? 0.0;
+
+        // Calculate heading change
+        final headingChange = (heading.value - oldHeading).abs();
+
+        // Adaptive interval based on movement
+        // If moving fast (change > 5°), update quickly (100ms)
+        // If stable (change < 1°), slow down (1000ms)
+        if (headingChange > 5) {
+          _compassUpdateInterval = 100; // Fast updates when turning
+        } else if (headingChange > 1) {
+          _compassUpdateInterval = 300; // Medium updates
+        } else {
+          _compassUpdateInterval = 1000; // Slow updates when stable
+        }
+
         _calculateQiblaDirection();
-        _checkQiblaAlignmentAndVibrate(); // 👈 add this line
-        lastUpdateTime.value = DateTime.now();
+        _checkQiblaAlignmentAndVibrate();
+        lastUpdateTime.value = now;
 
         // Check compass accuracy
         calibrationNeeded.value = event.accuracy != null && event.accuracy! <= 0.3;
@@ -676,11 +710,35 @@ class QiblaController extends GetxController {
 
   double get compassRotation => (heading.value - qiblaAngle.value) * (pi / 180);
 
-  @override
-  void onClose() {
+  // Pause compass updates to save battery
+  void pauseCompass() {
+    if (!isCompassPaused.value) {
+      _compassSubscription?.pause();
+      isCompassPaused.value = true;
+      print('⏸️ Compass stream paused');
+    }
+  }
+
+  // Resume compass updates
+  void resumeCompass() {
+    if (isCompassPaused.value) {
+      _compassSubscription?.resume();
+      isCompassPaused.value = false;
+      print('▶️ Compass stream resumed');
+    }
+  }
+
+  // Clean up all resources
+  void disposeResources() {
     _compassSubscription?.cancel();
     _locationSubscription?.cancel();
     _connectivitySubscription?.cancel();
+    print('✅ QiblaController disposed - all streams canceled');
+  }
+
+  @override
+  void onClose() {
+    disposeResources();
     super.onClose();
   }
 }

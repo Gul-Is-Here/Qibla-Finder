@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../controllers/quran_controller/quran_controller.dart';
 import '../../routes/app_pages.dart';
+import '../../widgets/quran_mini_player.dart';
 
 class QuranListScreen extends StatefulWidget {
   const QuranListScreen({super.key});
@@ -205,6 +206,19 @@ class _QuranListScreenState extends State<QuranListScreen> with SingleTickerProv
                     _buildHijbList(controller),
                   ],
                 ),
+              ),
+
+              // Mini Player - shows when audio is playing
+              QuranMiniPlayer(
+                onTap: () {
+                  // Navigate to the reader screen for the currently playing surah
+                  if (controller.currentQuranData.value != null) {
+                    Get.toNamed(
+                      Routes.QURAN_READER,
+                      arguments: controller.currentQuranData.value!.surah.number,
+                    );
+                  }
+                },
               ),
             ],
           ),

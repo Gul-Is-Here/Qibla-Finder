@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qibla_compass_offline/views/Compass_view/beautiful_qibla_screen.dart';
+import '../widgets/quran_mini_player.dart';
 
 import 'Prayers_views/beautiful_prayer_times_screen.dart';
 import 'Quran_views/quran_list_screen.dart';
@@ -17,8 +18,26 @@ class MainNavigationScreen extends StatelessWidget {
     final isTablet = screenWidth > 600;
 
     return Scaffold(
-      body: Obx(
-        () => IndexedStack(index: controller.selectedIndex.value, children: controller.screens),
+      body: Column(
+        children: [
+          // Main content
+          Expanded(
+            child: Obx(
+              () =>
+                  IndexedStack(index: controller.selectedIndex.value, children: controller.screens),
+            ),
+          ),
+          // Mini player - shows when audio is playing and not on Quran screen
+          Obx(() {
+            // Don't show mini player on Quran screen (index 2)
+            if (controller.selectedIndex.value == 2) {
+              return const SizedBox.shrink();
+            }
+            return QuranMiniPlayer(
+              onTap: () => controller.changePage(2), // Navigate to Quran screen
+            );
+          }),
+        ],
       ),
       bottomNavigationBar: Obx(
         () => Container(

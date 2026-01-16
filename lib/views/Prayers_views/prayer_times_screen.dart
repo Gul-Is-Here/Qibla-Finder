@@ -4,13 +4,11 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:intl/intl.dart';
 import 'package:qibla_compass_offline/controllers/prayer_controller/prayer_times_controller.dart';
 
 import 'package:qibla_compass_offline/views/notification_views/notification_settings_screen.dart';
 
-import '../../../services/ads/ad_service.dart';
 import '../../../services/notifications/notification_service.dart';
 
 import '../../widgets/shimmer_widget/shimmer_loading_widgets.dart';
@@ -27,13 +25,8 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
   late AnimationController _fadeController;
   late AnimationController _pulseController;
   late Animation<double> _fadeAnimation;
-  late Animation<double> _pulseAnimation;
+  // Removed unused _pulseAnimation
 
-  // Native ad instance (replacing second banner)
-  NativeAd? _nativeAd;
-  bool _isNativeAdLoaded = false;
-
-  bool _isDisposed = false;
   @override
   void initState() {
     super.initState();
@@ -42,23 +35,16 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
     _fadeController = AnimationController(duration: const Duration(milliseconds: 800), vsync: this);
     _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
 
-    // Pulse animation for next prayer card
+    // Pulse animation for next prayer card (removed - not used)
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.03,
-    ).animate(CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
 
     _fadeController.forward();
 
     // Request notification permission when screen loads
     _requestNotificationPermissionIfNeeded();
-
-    // Initialize native ad
-    _createNativeAd();
   }
 
   Future<void> _requestNotificationPermissionIfNeeded() async {
@@ -136,138 +122,6 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
       // Wait a moment, then ask for location permission
       await Future.delayed(const Duration(milliseconds: 500));
       await _requestLocationPermission();
-    }
-  }
-
-  // Show all scheduled notifications for debugging
-  Future<void> _showScheduledNotifications() async {
-    try {
-      final notificationService = NotificationService.instance;
-      final notifications = await notificationService.getScheduledNotifications();
-
-      if (!mounted) return;
-
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              Icon(Icons.schedule, color: primary, size: 28),
-              const SizedBox(width: 12),
-              Text(
-                'Scheduled Notifications',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: primary,
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: notifications.isEmpty
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.notifications_off, size: 60, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No notifications scheduled',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Enable prayer notifications to get reminders',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
-                      ),
-                    ],
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: notifications.length,
-                    itemBuilder: (context, index) {
-                      final notification = notifications[index];
-                      final content = notification.content;
-                      final schedule = notification.schedule;
-
-                      String scheduleInfo = 'Unknown time';
-                      if (schedule != null) {
-                        try {
-                          // Try to extract schedule date/time
-                          final scheduleStr = schedule.toString();
-                          scheduleInfo = scheduleStr;
-                        } catch (e) {
-                          scheduleInfo = 'Schedule info unavailable';
-                        }
-                      }
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: primary.withOpacity(0.1),
-                            child: Icon(Icons.notifications, color: primary, size: 20),
-                          ),
-                          title: Text(
-                            content?.title ?? 'No title',
-                            style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                content?.body ?? 'No body',
-                                style: GoogleFonts.poppins(fontSize: 12),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'ID: ${content?.id ?? 'N/A'}',
-                                style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey),
-                              ),
-                              Text(
-                                scheduleInfo,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 11,
-                                  color: primary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          isThreeLine: true,
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Close',
-                style: GoogleFonts.poppins(color: primary, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      print('❌ Error showing scheduled notifications: $e');
-      if (mounted) {
-        Get.snackbar(
-          'Error',
-          'Failed to fetch scheduled notifications: $e',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
     }
   }
 
@@ -420,101 +274,9 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
 
   @override
   void dispose() {
-    _isDisposed = true;
     _fadeController.dispose();
     _pulseController.dispose();
-    // Safely dispose native ad
-    if (_nativeAd != null) {
-      _nativeAd!.dispose();
-      _nativeAd = null;
-    }
     super.dispose();
-  }
-
-  void _createNativeAd() {
-    if (AdService.areAdsDisabled || _isDisposed) {
-      print(
-        '🚫 Native ad creation skipped: ${AdService.areAdsDisabled ? "Ads disabled" : "Widget disposed"}',
-      );
-      return;
-    }
-
-    // Dispose existing ad first to prevent conflicts
-    if (_nativeAd != null) {
-      print('🗑️ Disposing existing native ad');
-      _nativeAd!.dispose();
-      _nativeAd = null;
-      if (mounted) {
-        setState(() {
-          _isNativeAdLoaded = false;
-        });
-      }
-    }
-
-    try {
-      final adService = Get.find<AdService>();
-      final ad = adService.createUniqueNativeAd(
-        customKey: 'prayer_times_native_${DateTime.now().millisecondsSinceEpoch}',
-      );
-
-      if (ad == null) {
-        print('❌ Failed to create native ad - AdService returned null');
-        return;
-      }
-
-      print('🔄 Native ad created, starting load...');
-
-      // Set up the ad BEFORE calling load
-      _nativeAd = ad;
-
-      // Now load the ad
-      ad
-          .load()
-          .then((_) {
-            print('✅ Native ad loaded successfully - ID: ${ad.hashCode}');
-            if (mounted && _nativeAd != null && _nativeAd == ad && !_isDisposed) {
-              setState(() {
-                _isNativeAdLoaded = true;
-              });
-              print('✅ Native ad state updated to loaded');
-            } else {
-              print(
-                '⚠️ Native ad loaded but widget state changed: mounted=$mounted, disposed=$_isDisposed',
-              );
-              ad.dispose();
-            }
-          })
-          .catchError((error) {
-            print('❌ Native ad failed to load: $error');
-            print('❌ Error type: ${error.runtimeType}');
-            print('❌ Error details: ${error.toString()}');
-
-            if (_nativeAd != null && _nativeAd == ad && !_isDisposed) {
-              _nativeAd!.dispose();
-              _nativeAd = null;
-            }
-
-            if (mounted && !_isDisposed) {
-              setState(() {
-                _isNativeAdLoaded = false;
-              });
-            }
-          });
-    } catch (e, stackTrace) {
-      print('❌ Exception creating native ad: $e');
-      print('❌ Stack trace: $stackTrace');
-
-      if (_nativeAd != null && !_isDisposed) {
-        _nativeAd!.dispose();
-        _nativeAd = null;
-      }
-
-      if (mounted && !_isDisposed) {
-        setState(() {
-          _isNativeAdLoaded = false;
-        });
-      }
-    }
   }
 
   // Purple Theme Colors (matching app theme)
@@ -809,73 +571,6 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
   // ---------- Date Navigator (pill) ----------
 
   // ---------- Individual Prayer Tile ----------
-
-  // Native Ad Widget (Using advanced native ad template)
-  Widget _buildSecondBannerAd() {
-    // Check if ads are disabled for store
-    if (AdService.areAdsDisabled) {
-      print('🚫 Native ad widget: Ads disabled for store');
-      return const SizedBox.shrink();
-    }
-
-    // Check if widget is disposed
-    if (_isDisposed) {
-      print('🚫 Native ad widget: Widget is disposed');
-      return const SizedBox.shrink();
-    }
-
-    // Show ad only if loaded - don't take space while loading
-    if (_nativeAd == null || !_isNativeAdLoaded) {
-      print(
-        '⏳ Native ad widget: Not loaded, not taking space (ad=${_nativeAd != null}, loaded=$_isNativeAdLoaded)',
-      );
-      return const SizedBox.shrink();
-    }
-
-    // Double check the ad is actually loaded before showing AdWidget
-    try {
-      // Verify the ad is still valid
-      if (_nativeAd == null) {
-        throw Exception('Native ad became null');
-      }
-
-      print('✅ Native ad widget: Displaying ad (hashCode: ${_nativeAd.hashCode})');
-
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        height: 320, // Native ads are typically taller
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: AdWidget(key: ValueKey('prayer_native_ad_${_nativeAd.hashCode}'), ad: _nativeAd!),
-        ),
-      );
-    } catch (e, stackTrace) {
-      print('❌ Error displaying native AdWidget: $e');
-      print('❌ Stack trace: $stackTrace');
-
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        height: 120,
-        decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, color: Colors.grey[400], size: 32),
-              const SizedBox(height: 8),
-              Text('Ad Error', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
-              const SizedBox(height: 4),
-              Text(
-                e.toString().length > 50 ? '${e.toString().substring(0, 50)}...' : e.toString(),
-                style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey[500]),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
 
   // Islamic Features Section
 
@@ -1528,200 +1223,6 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen> with TickerProvid
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // Modern Islamic Features Section
-  Widget _modernIslamicFeaturesSection() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 24,
-                decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Islamic Features',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Quick Access Features
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.2,
-            children: [
-              _modernFeatureCard(
-                icon: Icons.calendar_month,
-                title: 'Islamic Calendar',
-                subtitle: 'Hijri dates & events',
-                gradient: [const Color(0xFF1B5E20), const Color(0xFF2E7D32)],
-                onTap: () => Get.toNamed('/islamic-calendar'),
-              ),
-              _modernFeatureCard(
-                icon: Icons.menu_book,
-                title: 'Dua Collection',
-                subtitle: 'Daily prayers',
-                gradient: [const Color(0xFF1565C0), const Color(0xFF1976D2)],
-                onTap: () => Get.toNamed('/dua-collection'),
-              ),
-              _modernFeatureCard(
-                icon: Icons.star,
-                title: '99 Names',
-                subtitle: 'Names of Allah',
-                gradient: [const Color(0xFF7B1FA2), const Color(0xFF8E24AA)],
-                onTap: () => Get.toNamed('/names-of-allah'),
-              ),
-              _modernFeatureCard(
-                icon: Icons.location_on,
-                title: 'Mosque Finder',
-                subtitle: 'Nearby mosques',
-                gradient: [const Color(0xFFE65100), const Color(0xFFFF9800)],
-                onTap: () => Get.toNamed('/mosque-finder'),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Dhikr Counter - Wide Card
-          _modernFeatureCard(
-            icon: Icons.fingerprint,
-            title: 'Dhikr Counter',
-            subtitle: 'Count your dhikr and tasbeeh',
-            gradient: [const Color(0xFF4527A0), const Color(0xFF5E35B1)],
-            onTap: () => Get.toNamed('/dhikr-counter'),
-            isWide: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _modernFeatureCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required List<Color> gradient,
-    required VoidCallback onTap,
-    bool isWide = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: gradient,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: gradient.first.withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: isWide
-            ? Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          title,
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          subtitle,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: Colors.white.withOpacity(0.9),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-                  ),
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    title,
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.white.withOpacity(0.9),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
       ),
     );
   }

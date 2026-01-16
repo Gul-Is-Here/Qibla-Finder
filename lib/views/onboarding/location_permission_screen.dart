@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../routes/app_pages.dart';
 import '../../services/location/location_service.dart';
 import '../../controllers/prayer_controller/prayer_times_controller.dart';
@@ -28,22 +30,7 @@ class LocationPermissionScreen extends StatelessWidget {
             children: [
               SizedBox(height: isSmallScreen ? 20 : 30),
 
-              // Skip button
-              Align(
-                alignment: Alignment.topRight,
-                child: TextButton(
-                  onPressed: () => _completeOnboarding(),
-                  child: Text(
-                    'Skip',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-
+              // Title at top
               SizedBox(height: isSmallScreen ? 10 : 20),
 
               // Location icon
@@ -129,21 +116,6 @@ class LocationPermissionScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 12),
-
-              // Later button
-              TextButton(
-                onPressed: () => _completeOnboarding(),
-                child: Text(
-                  'Maybe Later',
-                  style: GoogleFonts.poppins(
-                    fontSize: 15,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-
               SizedBox(height: isSmallScreen ? 20 : 30),
             ],
           ),
@@ -193,39 +165,47 @@ class LocationPermissionScreen extends StatelessWidget {
     try {
       final locationService = Get.find<LocationService>();
 
-      // Try to get current position which will request permission if needed
-      await locationService.getCurrentPosition();
+      // Request location permission
+      Position? position;
+      try {
+        position = await locationService.getCurrentPosition();
+      } catch (e) {
+        // Permission denied - show mandatory dialog
+        print('📍 Location access required for app functionality');
+        _showLocationRequiredDialog(context);
+        return;
+      }
 
-      // Show loading dialog
+      // Permission granted - show loading dialog and preload data
       Get.dialog(
         WillPopScope(
           onWillPop: () async => false,
           child: Center(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 40),
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
+                borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const CircularProgressIndicator(color: Color(0xFF8F66FF)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Text(
-                    'Loading Prayer Times...',
+                    'Setting Up Your App...',
                     style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       color: const Color(0xFF2D1B69),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Text(
-                    'Please wait while we fetch your prayer times and Qibla direction',
+                    'Loading prayer times and Qibla direction for your location',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
+                    style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600], height: 1.4),
                   ),
                 ],
               ),
@@ -243,37 +223,28 @@ class LocationPermissionScreen extends StatelessWidget {
         prayerController = Get.put(PrayerTimesController());
       }
 
-      // Fetch prayer times and Qibla data
+      // Fetch and cache prayer times (including monthly data)
       await prayerController.fetchPrayerTimes();
+      await prayerController.fetchAndCacheMonthlyPrayerTimes();
+
+      // Cache Qibla direction
+      await _cacheQiblaDirection(position);
 
       // Close loading dialog
       Get.back();
 
-      // Check if fetch was successful
-      if (prayerController.errorMessage.value.isNotEmpty) {
-        // Show error but allow user to continue
-        Get.snackbar(
-          'Notice',
-          'Could not load prayer times. You can try again from the app.',
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 3),
-        );
+      // Check if data was loaded successfully
+      if (prayerController.prayerTimes.value != null) {
+        // Success - save location permission flag and complete onboarding
+        final storage = GetStorage();
+        await storage.write('location_permission_granted', true);
+        print('✅ Location permission granted flag set to: true');
+        print('🔍 Current storage keys: ${storage.getKeys()}');
+        _completeOnboarding();
       } else {
-        // Show success message
-        Get.snackbar(
-          'Success',
-          'Prayer times loaded successfully',
-          backgroundColor: primaryPurple,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 2),
-        );
+        // Failed to load - show error and stay on this screen
+        _showDataLoadErrorDialog(context);
       }
-
-      // Complete onboarding and navigate to main screen
-      _completeOnboarding();
     } catch (e) {
       // Close loading dialog if open
       if (Get.isDialogOpen ?? false) {
@@ -282,23 +253,160 @@ class LocationPermissionScreen extends StatelessWidget {
 
       print('Error requesting location permission: $e');
 
-      Get.snackbar(
-        'Location Required',
-        'Please enable location to use all features',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-
-      // Still complete onboarding even if error occurs
-      _completeOnboarding();
+      // Show error dialog
+      _showDataLoadErrorDialog(context);
     }
   }
 
-  void _completeOnboarding() {
+  Future<void> _cacheQiblaDirection(position) async {
+    try {
+      // Calculate Qibla angle
+      const double kaabaLat = 21.422487;
+      const double kaabaLng = 39.826206;
+
+      final lat1 = position.latitude * (3.141592653589793 / 180);
+      final lng1 = position.longitude * (3.141592653589793 / 180);
+      final lat2 = kaabaLat * (3.141592653589793 / 180);
+      final lng2 = kaabaLng * (3.141592653589793 / 180);
+
+      final dLng = lng2 - lng1;
+      final y = sin(dLng) * cos(lat2);
+      final x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLng);
+      final qiblaAngle = atan2(y, x) * (180 / 3.141592653589793);
+
+      // Save to storage for offline use
+      final storage = GetStorage();
+      await storage.write('cachedQiblaAngle', qiblaAngle);
+      await storage.write('cachedUserLatitude', position.latitude);
+      await storage.write('cachedUserLongitude', position.longitude);
+
+      print('✅ Qibla direction cached: ${qiblaAngle.toStringAsFixed(2)}°');
+    } catch (e) {
+      print('⚠️ Error caching Qibla direction: $e');
+    }
+  }
+
+  void _showLocationRequiredDialog(BuildContext context) {
+    Get.dialog(
+      WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.location_off, color: Colors.red, size: 28),
+              const SizedBox(width: 12),
+              Text(
+                'Location Required',
+                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text(
+            'This app needs your location to:\n\n'
+            '• Show accurate Qibla direction\n'
+            '• Calculate prayer times for your area\n'
+            '• Find nearby mosques\n\n'
+            'Without location access, the app cannot function properly.\n\n'
+            'Please enable location permission in your device settings.',
+            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700], height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Get.back();
+
+                // Show helpful message
+                Get.snackbar(
+                  'Opening Settings',
+                  'Please enable location permission and return to the app',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: primaryPurple,
+                  colorText: Colors.white,
+                  duration: const Duration(seconds: 3),
+                  icon: const Icon(Icons.settings, color: Colors.white),
+                );
+
+                // Open app settings
+                await Geolocator.openAppSettings();
+
+                // Wait for user to return from settings (give them time)
+                await Future.delayed(const Duration(seconds: 2));
+
+                // Retry permission request after settings
+                _requestLocationPermission(context);
+              },
+              child: Text(
+                'Open Settings',
+                style: GoogleFonts.poppins(
+                  color: primaryPurple,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  void _showDataLoadErrorDialog(BuildContext context) {
+    Get.dialog(
+      WillPopScope(
+        onWillPop: () async => false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.orange, size: 28),
+              const SizedBox(width: 12),
+              Text(
+                'Setup Failed',
+                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text(
+            'Unable to load prayer times. Please check your internet connection and try again.',
+            style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700], height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Get.back();
+                // Retry data loading
+                _requestLocationPermission(context);
+              },
+              child: Text(
+                'Try Again',
+                style: GoogleFonts.poppins(
+                  color: primaryPurple,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  Future<void> _completeOnboarding() async {
     // Mark onboarding as completed
     final storage = GetStorage();
-    storage.write('onboarding_completed', true);
+    await storage.write('onboarding_completed', true);
+
+    // Add small delay to ensure storage write completes
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    print('✅ Onboarding completed flag set to: true');
+    print('🔍 Final storage state:');
+    print('   onboarding_completed: ${storage.read('onboarding_completed')}');
+    print('   location_permission_granted: ${storage.read('location_permission_granted')}');
 
     // Navigate to main screen
     Get.offAllNamed(Routes.MAIN);
