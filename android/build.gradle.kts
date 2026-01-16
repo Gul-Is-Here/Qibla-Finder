@@ -2,6 +2,8 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // InMobi SDK Repository
+        maven { url = uri("https://dl.cloudsmith.io/public/inmobi/inmobi-android-sdk/maven/") }
     }
 }
 

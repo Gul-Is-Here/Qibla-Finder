@@ -34,6 +34,9 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // InMobi requires multidex for API < 21
+        multiDexEnabled = true
     }
 
     signingConfigs {
@@ -46,10 +49,24 @@ android {
     }
     buildTypes {
         release {
-           
             signingConfig = signingConfigs.getByName("release")
+            // Enable ProGuard/R8 with custom rules
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
+}
+
+// InMobi SDK dependency
+dependencies {
+    implementation("com.inmobi.monetization:inmobi-ads-kotlin:10.7.7")
+    implementation("com.squareup.picasso:picasso:2.71828")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.multidex:multidex:2.0.1")
 }
 
 flutter {
