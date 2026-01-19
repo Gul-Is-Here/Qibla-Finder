@@ -9,12 +9,14 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../controllers/prayer_controller/prayer_times_controller.dart';
+import '../../routes/app_pages.dart';
 import '../../services/notifications/notification_service.dart';
 import '../../widgets/shimmer_widget/shimmer_loading_widgets.dart';
 import '../notification_views/notification_settings_screen.dart';
 import '../home_view/common_view/islamic_calendar_screen.dart';
 import '../home_view/Diker/dhikr_counter_screen.dart';
 import '../home_view/dua_view/dua_collection_screen.dart';
+import '../hadith_views/daily_hadith_screen.dart';
 import 'prayer_times_detail_screen.dart';
 
 class BeautifulPrayerTimesScreen extends StatefulWidget {
@@ -1128,120 +1130,337 @@ Shared from Qibla Compass App
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header with decorative element
           Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Text(
-              'Quick Actions',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
-              ),
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [primaryPurple, goldAccent],
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Quick Actions',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primaryPurple.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '7 Features',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: primaryPurple,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          // Grid of cards
+
+          // Featured Card - Ramadan (Highlighted)
+          _buildFeaturedQuickActionCard(
+            icon: Icons.nights_stay_rounded,
+            title: 'Ramadan',
+            subtitle: 'Suhoor, Iftar & Fasting Tracker',
+            gradient: [const Color(0xFF8F66FF), const Color(0xFF6B4EE6)],
+            onTap: () => Get.toNamed(Routes.RAMADAN),
+          ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.1, end: 0),
+
+          const SizedBox(height: 12),
+
+          // Grid of cards - Row 1
           Row(
             children: [
               Expanded(
-                child: _buildQuickActionCard(
-                  icon: Icons.calendar_today_rounded,
-                  title: 'Calendar',
-                  color: primaryPurple,
-                  onTap: () => Get.to(() => IslamicCalendarScreen()),
+                child: _buildModernQuickActionCard(
+                  icon: Icons.auto_stories_rounded,
+                  title: 'Hadith',
+                  subtitle: 'Daily Wisdom',
+                  gradient: [const Color(0xFFD4AF37), const Color(0xFFB8860B)],
+                  onTap: () => Get.to(() => const DailyHadithScreen()),
+                  delay: 100,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                child: _buildQuickActionCard(
-                  icon: Icons.notifications_rounded,
-                  title: 'Notifications',
-                  color: accentPurple,
-                  onTap: () => Get.to(() => NotificationSettingsScreen()),
+                child: _buildModernQuickActionCard(
+                  icon: Icons.calendar_month_rounded,
+                  title: 'Calendar',
+                  subtitle: 'Hijri Dates',
+                  gradient: [primaryPurple, const Color(0xFF6B4EE6)],
+                  onTap: () => Get.to(() => IslamicCalendarScreen()),
+                  delay: 150,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 12),
+
+          // Grid of cards - Row 2
           Row(
             children: [
               Expanded(
-                child: _buildQuickActionCard(
-                  icon: Icons.circle_outlined,
-                  title: 'Zikr Counter',
-                  color: lightPurple,
-                  onTap: () => Get.to(() => const DhikrCounterScreen()),
+                child: _buildModernQuickActionCard(
+                  icon: Icons.notifications_active_rounded,
+                  title: 'Alerts',
+                  subtitle: 'Prayer Reminders',
+                  gradient: [accentPurple, const Color(0xFF7B5FE6)],
+                  onTap: () => Get.to(() => NotificationSettingsScreen()),
+                  delay: 200,
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                child: _buildQuickActionCard(
+                child: _buildModernQuickActionCard(
+                  icon: Icons.touch_app_rounded,
+                  title: 'Tasbih',
+                  subtitle: 'Digital Counter',
+                  gradient: [lightPurple, const Color(0xFF9B7FE6)],
+                  onTap: () => Get.to(() => const DhikrCounterScreen()),
+                  delay: 250,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Grid of cards - Row 3
+          Row(
+            children: [
+              Expanded(
+                child: _buildModernQuickActionCard(
                   icon: Icons.menu_book_rounded,
-                  title: 'Daily Duas',
-                  color: darkPurple,
+                  title: 'Duas',
+                  subtitle: 'Daily Prayers',
+                  gradient: [darkPurple, const Color(0xFF3D2B79)],
                   onTap: () => Get.to(() => const DuaCollectionScreen()),
+                  delay: 300,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildModernQuickActionCard(
+                  icon: Icons.calculate_rounded,
+                  title: 'Zakat',
+                  subtitle: 'Calculator',
+                  gradient: [const Color(0xFF4CAF50), const Color(0xFF2E7D32)],
+                  onTap: () => Get.toNamed(Routes.ZAKAT_CALCULATOR),
+                  delay: 350,
                 ),
               ),
             ],
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms);
+    );
   }
 
+  // Featured card for highlighted actions (like Daily Hadith)
+  Widget _buildFeaturedQuickActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Color> gradient,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: gradient,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: gradient[0].withOpacity(0.4),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Animated Icon Container
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+              ),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 16),
+            // Text Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Decorative Arrow
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Modern card design for grid items
+  Widget _buildModernQuickActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Color> gradient,
+    required VoidCallback onTap,
+    int delay = 0,
+  }) {
+    return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: gradient[0].withOpacity(0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon with gradient background
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: gradient,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: gradient[0].withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 22),
+                ),
+                const SizedBox(height: 12),
+                // Title
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[850],
+                  ),
+                ),
+                const SizedBox(height: 2),
+                // Subtitle
+                Text(
+                  subtitle,
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Bottom indicator bar
+                Container(
+                  width: 30,
+                  height: 3,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: gradient),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
+        .animate()
+        .fadeIn(
+          duration: 400.ms,
+          delay: Duration(milliseconds: delay),
+        )
+        .slideY(begin: 0.2, end: 0);
+  }
+
+  // Keep old method for backwards compatibility but it won't be used
   Widget _buildQuickActionCard({
     required IconData icon,
     required String title,
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return _buildModernQuickActionCard(
+      icon: icon,
+      title: title,
+      subtitle: '',
+      gradient: [color, color.withOpacity(0.8)],
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey[200]!, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 12),
-            // Text
-            Expanded(
-              child: Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[900],
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            // Arrow
-            Icon(Icons.chevron_right_rounded, color: Colors.grey[400], size: 20),
-          ],
-        ),
-      ),
     );
   }
 

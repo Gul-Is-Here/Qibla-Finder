@@ -2,6 +2,9 @@ import 'package:get/get.dart';
 import 'package:qibla_compass_offline/views/Prayers_views/prayer_times_screen.dart';
 
 import '../core/middleware/ad_tracking_middleware.dart';
+import '../views/hadith_views/daily_hadith_screen.dart';
+import '../views/ramadan_views/ramadan_screen.dart';
+import '../views/zakat_views/zakat_calculator_screen.dart';
 import '../views/home_view/Diker/dhikr_counter_screen.dart';
 import '../views/home_view/common_view/islamic_calendar_screen.dart';
 import '../views/home_view/dua_view/dua_collection_screen.dart';
@@ -41,6 +44,9 @@ abstract class Routes {
   static const DHIKR_COUNTER = '/dhikr-counter';
   static const ISLAMIC_FEATURES = '/islamic-features';
   static const ENHANCED_ISLAMIC_FEATURES = '/enhanced-islamic-features';
+  static const DAILY_HADITH = '/daily-hadith';
+  static const RAMADAN = '/ramadan';
+  static const ZAKAT_CALCULATOR = '/zakat-calculator';
 }
 
 class AppPages {
@@ -117,6 +123,21 @@ class AppPages {
     GetPage(
       name: Routes.ENHANCED_ISLAMIC_FEATURES,
       page: () => const EnhancedIslamicFeaturesScreen(),
+      middlewares: [AdTrackingMiddleware()],
+    ),
+    GetPage(
+      name: Routes.DAILY_HADITH,
+      page: () => const DailyHadithScreen(),
+      middlewares: [AdTrackingMiddleware()],
+    ),
+    GetPage(
+      name: Routes.RAMADAN,
+      page: () => RamadanScreen(),
+      middlewares: [AdTrackingMiddleware()],
+    ),
+    GetPage(
+      name: Routes.ZAKAT_CALCULATOR,
+      page: () => ZakatCalculatorScreen(),
       middlewares: [AdTrackingMiddleware()],
     ),
   ];

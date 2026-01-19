@@ -84,6 +84,12 @@ class IslamicFeaturesIndexScreen extends StatelessWidget {
               childAspectRatio: 0.9,
               children: [
                 _buildFeatureCard(
+                  icon: Icons.nights_stay,
+                  title: 'Ramadan',
+                  description: 'Suhoor/Iftar times, fasting tracker, duas and countdown',
+                  onTap: () => Get.toNamed(Routes.RAMADAN),
+                ),
+                _buildFeatureCard(
                   icon: Icons.calendar_month,
                   title: 'Islamic Calendar',
                   description: 'View Hijri dates, Islamic months, and important religious events',
@@ -106,6 +112,12 @@ class IslamicFeaturesIndexScreen extends StatelessWidget {
                   title: 'Mosque Finder',
                   description: 'Find nearby mosques with prayer times and directions',
                   onTap: () => Get.toNamed(Routes.MOSQUE_FINDER),
+                ),
+                _buildFeatureCard(
+                  icon: Icons.auto_stories,
+                  title: 'Daily Hadith',
+                  description: 'Authentic hadith from Sahih Bukhari & Muslim with translations',
+                  onTap: () => Get.toNamed(Routes.DAILY_HADITH),
                 ),
               ],
             ),

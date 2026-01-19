@@ -345,6 +345,7 @@ class AdService extends GetxController {
     // Check daily limit (3 ads per day)
     if (_hasReachedDailyLimit()) {
       print('⛔ Daily interstitial ad limit reached (3/3). Skipping ad.');
+      _showNoMoreAdsDialog();
       onAdClosed?.call();
       return;
     }
@@ -366,6 +367,11 @@ class AdService extends GetxController {
           isInterstitialAdLoaded.value = false;
           _isInterstitialShowing = false;
           _lastInterstitialShowTime = DateTime.now();
+
+          // Increment count and show appropriate dialog
+          _incrementDailyAdCount();
+          _showAdCompletedDialog();
+
           _loadInterstitialAd(); // Load next ad
           onAdClosed?.call();
         },
@@ -381,7 +387,6 @@ class AdService extends GetxController {
         },
         onAdShowedFullScreenContent: (ad) {
           print('📺 Interstitial ad showing full screen content');
-          _incrementDailyAdCount(); // Increment count when ad is shown
         },
       );
 
@@ -390,6 +395,202 @@ class AdService extends GetxController {
       print('⚠️ Interstitial ad not ready to show');
       onAdClosed?.call();
     }
+  }
+
+  /// Show beautiful dialog after ad completion
+  void _showAdCompletedDialog() {
+    final currentCount = _storage.read<int>(_keyAdCount) ?? 0;
+    final remaining = _maxInterstitialAdsPerDay - currentCount;
+
+    if (remaining <= 0) {
+      // Show congratulations - no more ads!
+      _showNoMoreAdsDialog();
+    } else {
+      // Show ad completed dialog with remaining count
+      Get.dialog(
+        AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF8F66FF), Color(0xFF6B4EE6)]),
+                  borderRadius: BorderRadius.circular(40),
+                ),
+                child: const Icon(Icons.check_circle, color: Colors.white, size: 48),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Thank You! 🤲',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D1B69),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Your support helps keep this app free for the Ummah.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8F66FF).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.info_outline, color: Color(0xFF8F66FF), size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$remaining ad${remaining == 1 ? '' : 's'} remaining today',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF8F66FF),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Get.back(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8F66FF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text(
+                  'Continue',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+        barrierDismissible: true,
+      );
+    }
+  }
+
+  /// Show congratulations dialog - no more ads for today!
+  void _showNoMoreAdsDialog() {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
+                borderRadius: BorderRadius.circular(50),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4CAF50).withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.celebration, color: Colors.white, size: 56),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              '🎉 Congratulations! 🎉',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D1B69)),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'No More Ads Today!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF4CAF50)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'You\'ve watched all 3 ads for today. Enjoy ad-free browsing until tomorrow!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600], height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD4AF37).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text('🌙', style: TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'JazakAllah Khair!',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D1B69),
+                          ),
+                        ),
+                        Text(
+                          'Resets at 5:00 AM',
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Get.back(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                'Alhamdulillah! ✨',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
   }
 
   /// Check and reset daily interstitial ad limit at 5 AM
