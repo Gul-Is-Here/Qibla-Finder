@@ -3,15 +3,12 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:just_audio/just_audio.dart';
 import '../../models/prayer_model/prayer_times_model.dart';
 import '../../routes/app_pages.dart';
 import 'enhanced_notification_service.dart';
 
 class NotificationService {
   static final NotificationService instance = NotificationService._init();
-  static final AudioPlayer _audioPlayer = AudioPlayer();
-  static bool _isPlayingAzan = false;
   bool _isInitialized = false;
 
   NotificationService._init();
@@ -26,21 +23,29 @@ class NotificationService {
     print('🔔 Initializing NotificationService...');
 
     try {
+      // Initialize ALL notification channels in one place (main + enhanced)
       await AwesomeNotifications().initialize(
         null, // Default app icon
         [
+          // Main Prayer Channel with Azan sound (v3 - FIXED: removed defaultRingtoneType to use custom sound)
           NotificationChannel(
-            channelKey: 'prayer_channel',
-            channelName: 'Prayer Times',
-            channelDescription: 'Notifications for prayer times',
+            channelKey: 'prayer_channel_v3',
+            channelName: 'Prayer Times with Azan',
+            channelDescription: 'Notifications for prayer times with Azan sound',
             defaultColor: const Color(0xFFAB80FF),
             ledColor: Colors.white,
             importance: NotificationImportance.Max,
             channelShowBadge: true,
             playSound: true,
             enableVibration: true,
-            soundSource: 'resource://raw/azan', // Custom azan sound from Android raw resources
+            soundSource: 'resource://raw/azan',
+            enableLights: true,
+            locked: false,
+            onlyAlertOnce: false,
+            // NOTE: DO NOT set defaultRingtoneType - it overrides soundSource!
+            criticalAlerts: true,
           ),
+          // Silent Notifications Channel
           NotificationChannel(
             channelKey: 'silent_channel',
             channelName: 'Silent Notifications',
@@ -50,6 +55,7 @@ class NotificationService {
             playSound: false,
             enableVibration: false,
           ),
+          // Qibla Reminders Channel
           NotificationChannel(
             channelKey: 'qibla_reminder',
             channelName: 'Qibla Reminders',
@@ -59,12 +65,85 @@ class NotificationService {
             playSound: true,
             enableVibration: true,
           ),
+          // Enhanced: Pre-Prayer Reminder Channel
+          NotificationChannel(
+            channelKey: 'pre_prayer_reminder',
+            channelName: 'Pre-Prayer Reminders',
+            channelDescription: 'Reminders before prayer time',
+            defaultColor: const Color(0xFF8F66FF),
+            ledColor: Colors.white,
+            importance: NotificationImportance.High,
+            playSound: true,
+            enableVibration: true,
+          ),
+          // Enhanced: Post-Prayer Check-in Channel
+          NotificationChannel(
+            channelKey: 'post_prayer_checkin',
+            channelName: 'Prayer Check-in',
+            channelDescription: 'Reminders to mark prayer completion',
+            defaultColor: const Color(0xFFD4AF37),
+            importance: NotificationImportance.Default,
+            playSound: false,
+            enableVibration: true,
+            criticalAlerts: true,
+          ),
+          // Enhanced: Jummah Special Channel
+          NotificationChannel(
+            channelKey: 'jummah_channel',
+            channelName: 'Jummah Reminders',
+            channelDescription: 'Friday prayer reminders',
+            defaultColor: const Color(0xFF2D1B69),
+            ledColor: const Color(0xFFD4AF37),
+            importance: NotificationImportance.Max,
+            playSound: true,
+            enableVibration: true,
+          ),
+          // Enhanced: Dhikr Reminder Channel
+          NotificationChannel(
+            channelKey: 'dhikr_reminder',
+            channelName: 'Dhikr Reminders',
+            channelDescription: 'Daily dhikr and remembrance reminders',
+            defaultColor: const Color(0xFF00897B),
+            importance: NotificationImportance.Default,
+            playSound: true,
+            enableVibration: false,
+          ),
+          // Enhanced: Optional Prayers Channel
+          NotificationChannel(
+            channelKey: 'optional_prayers',
+            channelName: 'Optional Prayers',
+            channelDescription: 'Reminders for Tahajjud, Duha, etc.',
+            defaultColor: const Color(0xFF4CAF50),
+            importance: NotificationImportance.Default,
+            playSound: true,
+            enableVibration: true,
+          ),
+          // Enhanced: Islamic Events Channel
+          NotificationChannel(
+            channelKey: 'islamic_events',
+            channelName: 'Islamic Events',
+            channelDescription: 'Special Islamic dates and events',
+            defaultColor: const Color(0xFFFF9800),
+            importance: NotificationImportance.High,
+            playSound: true,
+            enableVibration: true,
+          ),
+          // Enhanced: Achievement/Streak Channel
+          NotificationChannel(
+            channelKey: 'achievements',
+            channelName: 'Achievements',
+            channelDescription: 'Prayer streaks and milestones',
+            defaultColor: const Color(0xFF4CAF50),
+            importance: NotificationImportance.Default,
+            playSound: true,
+            enableVibration: false,
+          ),
         ],
-        debug: false, // Changed to false for consistent behavior in release mode
+        debug: true, // Enable debug for troubleshooting
       );
 
       _isInitialized = true;
-      print('✅ NotificationService initialized successfully with custom azan sound');
+      print('✅ NotificationService initialized successfully with all channels (main + enhanced)');
     } catch (e, stackTrace) {
       print('❌ Error initializing NotificationService: $e');
       print('Stack trace: $stackTrace');
@@ -74,7 +153,7 @@ class NotificationService {
         print('⚠️ Retrying initialization without custom sound...');
         await AwesomeNotifications().initialize(null, [
           NotificationChannel(
-            channelKey: 'prayer_channel',
+            channelKey: 'prayer_channel_v3',
             channelName: 'Prayer Times',
             channelDescription: 'Notifications for prayer times',
             defaultColor: const Color(0xFFAB80FF),
@@ -83,6 +162,7 @@ class NotificationService {
             channelShowBadge: true,
             playSound: true,
             enableVibration: true,
+            criticalAlerts: true,
           ),
           NotificationChannel(
             channelKey: 'silent_channel',
@@ -102,11 +182,78 @@ class NotificationService {
             playSound: true,
             enableVibration: true,
           ),
+          // Enhanced channels (without custom sound)
+          NotificationChannel(
+            channelKey: 'pre_prayer_reminder',
+            channelName: 'Pre-Prayer Reminders',
+            channelDescription: 'Reminders before prayer time',
+            defaultColor: const Color(0xFF8F66FF),
+            ledColor: Colors.white,
+            importance: NotificationImportance.High,
+            playSound: true,
+            enableVibration: true,
+          ),
+          NotificationChannel(
+            channelKey: 'post_prayer_checkin',
+            channelName: 'Prayer Check-in',
+            channelDescription: 'Reminders to mark prayer completion',
+            defaultColor: const Color(0xFFD4AF37),
+            importance: NotificationImportance.Default,
+            playSound: false,
+            enableVibration: true,
+            criticalAlerts: true,
+          ),
+          NotificationChannel(
+            channelKey: 'jummah_channel',
+            channelName: 'Jummah Reminders',
+            channelDescription: 'Friday prayer reminders',
+            defaultColor: const Color(0xFF2D1B69),
+            ledColor: const Color(0xFFD4AF37),
+            importance: NotificationImportance.Max,
+            playSound: true,
+            enableVibration: true,
+          ),
+          NotificationChannel(
+            channelKey: 'dhikr_reminder',
+            channelName: 'Dhikr Reminders',
+            channelDescription: 'Daily dhikr and remembrance reminders',
+            defaultColor: const Color(0xFF00897B),
+            importance: NotificationImportance.Default,
+            playSound: true,
+            enableVibration: false,
+          ),
+          NotificationChannel(
+            channelKey: 'optional_prayers',
+            channelName: 'Optional Prayers',
+            channelDescription: 'Reminders for Tahajjud, Duha, etc.',
+            defaultColor: const Color(0xFF4CAF50),
+            importance: NotificationImportance.Default,
+            playSound: true,
+            enableVibration: true,
+          ),
+          NotificationChannel(
+            channelKey: 'islamic_events',
+            channelName: 'Islamic Events',
+            channelDescription: 'Special Islamic dates and events',
+            defaultColor: const Color(0xFFFF9800),
+            importance: NotificationImportance.High,
+            playSound: true,
+            enableVibration: true,
+          ),
+          NotificationChannel(
+            channelKey: 'achievements',
+            channelName: 'Achievements',
+            channelDescription: 'Prayer streaks and milestones',
+            defaultColor: const Color(0xFF4CAF50),
+            importance: NotificationImportance.Default,
+            playSound: true,
+            enableVibration: false,
+          ),
         ], debug: false);
         _isInitialized = true;
-        print('✅ NotificationService initialized successfully (default sound)');
+        print('✅ NotificationService initialized successfully with all channels (default sound)');
       } catch (e2) {
-        print('❌ Failed to initialize NotificationService even without custom sound: $e2');
+        print('❌ Failed to initialize NotificationService: $e2');
         _isInitialized = false;
         rethrow;
       }
@@ -118,15 +265,8 @@ class NotificationService {
     // Set up notification listeners
     _setupListeners();
 
-    // Initialize enhanced notification channels
-    try {
-      final enhancedService = EnhancedNotificationService.instance;
-      await enhancedService.initializeEnhancedChannels();
-      print('✅ Enhanced notification channels initialized');
-    } catch (e) {
-      print('⚠️ Error initializing enhanced channels: $e');
-      // Continue without enhanced features if initialization fails
-    }
+    // Mark enhanced channels as already initialized (no separate initialization needed)
+    print('✅ All notification channels (main + enhanced) are ready');
   }
 
   Future<bool> requestPermissions() async {
@@ -166,17 +306,14 @@ class NotificationService {
     ReceivedNotification receivedNotification,
   ) async {
     print('Notification displayed: ${receivedNotification.id}');
-
-    // Play Azan when notification is displayed
-    if (receivedNotification.channelKey == 'prayer_channel') {
-      await _playAzan();
-    }
+    // Azan sound is now played by the notification system automatically
+    // No need to manually play it from the app
   }
 
   @pragma("vm:entry-point")
   static Future<void> onDismissActionReceivedMethod(ReceivedAction receivedAction) async {
     print('Notification dismissed: ${receivedAction.id}');
-    await _stopAzan();
+    // Notification sound is controlled by system, dismissing notification stops sound
   }
 
   @pragma("vm:entry-point")
@@ -197,11 +334,19 @@ class NotificationService {
     // Handle action buttons
     switch (receivedAction.buttonKeyPressed) {
       case 'STOP_AZAN':
-        await _stopAzan();
+        // Dismiss the notification to stop the azan sound
+        await AwesomeNotifications().dismiss(receivedAction.id ?? 0);
+        Get.snackbar(
+          '🔇 Azan Stopped',
+          'Notification dismissed',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
         break;
 
       case 'MARK_PRAYED':
-        await _stopAzan();
+        // Dismiss the notification to stop the azan sound
+        await AwesomeNotifications().dismiss(receivedAction.id ?? 0);
         final prayerName = payload['prayer'] ?? '';
         if (prayerName.isNotEmpty) {
           await enhancedService.updatePrayerStreak(prayerName);
@@ -329,51 +474,6 @@ class NotificationService {
     }
   }
 
-  static Future<void> _playAzan() async {
-    // Prevent multiple simultaneous playback attempts
-    if (_isPlayingAzan) {
-      print('⚠️ Azan already playing, skipping duplicate request');
-      return;
-    }
-
-    try {
-      _isPlayingAzan = true;
-
-      // Stop any currently playing audio first
-      await _audioPlayer.stop();
-
-      // Set the audio source
-      await _audioPlayer.setAsset('assets/audio/azan.mp3');
-
-      // Play the audio
-      await _audioPlayer.play();
-
-      print('✅ Azan playback started');
-
-      // Listen for completion
-      _audioPlayer.playerStateStream.listen((state) {
-        if (state.processingState == ProcessingState.completed) {
-          _isPlayingAzan = false;
-          print('✅ Azan playback completed');
-        }
-      });
-    } catch (e) {
-      print('❌ Error playing Azan: $e');
-      _isPlayingAzan = false;
-    }
-  }
-
-  static Future<void> _stopAzan() async {
-    try {
-      await _audioPlayer.stop();
-      _isPlayingAzan = false;
-      print('🔇 Azan playback stopped');
-    } catch (e) {
-      print('❌ Error stopping Azan: $e');
-      _isPlayingAzan = false;
-    }
-  }
-
   // Get prayer emoji based on prayer name
   String _getPrayerEmoji(String prayerName) {
     switch (prayerName.toLowerCase()) {
@@ -392,6 +492,42 @@ class NotificationService {
     }
   }
 
+  // Get Islamic greeting based on prayer time
+  String _getIslamicGreeting(String prayerName) {
+    switch (prayerName.toLowerCase()) {
+      case 'fajr':
+        return 'صَلَاةُ الْفَجْر'; // Salat al-Fajr
+      case 'dhuhr':
+        return 'صَلَاةُ الظُّهْر'; // Salat al-Dhuhr
+      case 'asr':
+        return 'صَلَاةُ الْعَصْر'; // Salat al-Asr
+      case 'maghrib':
+        return 'صَلَاةُ الْمَغْرِب'; // Salat al-Maghrib
+      case 'isha':
+        return 'صَلَاةُ الْعِشَاء'; // Salat al-Isha
+      default:
+        return 'حَانَ وَقْتُ الصَّلَاة'; // Time for prayer
+    }
+  }
+
+  // Get inspirational message for each prayer
+  String _getInspirationMessage(String prayerName) {
+    switch (prayerName.toLowerCase()) {
+      case 'fajr':
+        return '🤲 "Prayer is better than sleep" - Start your day blessed';
+      case 'dhuhr':
+        return '🤲 Take a moment to connect with Allah in your busy day';
+      case 'asr':
+        return '🤲 "Guard strictly the prayers, especially the middle prayer"';
+      case 'maghrib':
+        return '🤲 As the sun sets, let gratitude fill your heart';
+      case 'isha':
+        return '🤲 End your day in peace with remembrance of Allah';
+      default:
+        return '🤲 "Indeed, prayer prohibits immorality and wrongdoing"';
+    }
+  }
+
   // Get beautiful notification body with time formatting
   String _getNotificationBody(String prayerName, DateTime prayerTime, String? locationName) {
     // Convert to 12-hour format with AM/PM
@@ -406,16 +542,18 @@ class NotificationService {
     }
 
     final timeStr = '$hour:${prayerTime.minute.toString().padLeft(2, '0')} $period';
+    final inspiration = _getInspirationMessage(prayerName);
 
-    final messages = {
-      'Fajr': 'Time for Fajr prayer at $timeStr',
-      'Dhuhr': 'Dhuhr time at $timeStr',
-      'Asr': 'Asr at $timeStr',
-      'Maghrib': 'Maghrib at $timeStr',
-      'Isha': 'Isha at $timeStr',
-    };
+    String locationStr = locationName != null && locationName.isNotEmpty ? '📍 $locationName' : '';
 
-    return messages[prayerName] ?? 'It\'s time for $prayerName prayer at $timeStr';
+    return '⏰ $timeStr\n$inspiration${locationStr.isNotEmpty ? '\n$locationStr' : ''}';
+  }
+
+  // Get beautiful notification title
+  String _getNotificationTitle(String prayerName) {
+    final emoji = _getPrayerEmoji(prayerName);
+    final arabicName = _getIslamicGreeting(prayerName);
+    return '$emoji $prayerName Time • $arabicName';
   }
 
   // Schedule notification for a specific prayer
@@ -442,19 +580,19 @@ class NotificationService {
       return;
     }
 
-    final emoji = _getPrayerEmoji(prayerName);
+    final title = _getNotificationTitle(prayerName);
     final body = _getNotificationBody(prayerName, prayerTime, locationName);
 
     print('🔔 scheduleAzanNotification: Creating notification...');
-    print('🔔 scheduleAzanNotification: Title = "$emoji $prayerName Prayer Time"');
+    print('🔔 scheduleAzanNotification: Title = "$title"');
     print('🔔 scheduleAzanNotification: Body = "$body"');
 
     try {
       await AwesomeNotifications().createNotification(
         content: NotificationContent(
           id: id,
-          channelKey: 'prayer_channel',
-          title: '$emoji $prayerName Prayer Time',
+          channelKey: 'prayer_channel_v3',
+          title: title,
           body: body,
           summary: locationName ?? '',
           notificationLayout: NotificationLayout.BigText,
@@ -462,33 +600,42 @@ class NotificationService {
           wakeUpScreen: true,
           fullScreenIntent: true,
           autoDismissible: false,
-          backgroundColor: const Color(0xFF00332F),
-          color: const Color(0xFF00897B),
+          backgroundColor: const Color(0xFF2D1B69),
+          color: const Color(0xFFD4AF37),
           payload: {
             'prayer': prayerName,
             'time': prayerTime.toIso8601String(),
             'location': locationName ?? '',
           },
           criticalAlert: true,
+          customSound: 'resource://raw/azan',
+          largeIcon: 'resource://drawable/ic_mosque',
         ),
         actionButtons: [
           NotificationActionButton(
             key: 'STOP_AZAN',
-            label: 'Mute',
-            color: Colors.red,
+            label: '🔇 Stop Azan',
             autoDismissible: true,
-            actionType: ActionType.Default,
-            isDangerousOption: true,
+            actionType: ActionType.SilentAction,
           ),
           NotificationActionButton(
             key: 'MARK_PRAYED',
-            label: 'Prayed',
-            color: const Color(0xFF00897B),
+            label: '✅ Mark as Prayed',
             autoDismissible: true,
-            actionType: ActionType.Default,
+            actionType: ActionType.SilentAction,
           ),
         ],
-        schedule: NotificationCalendar.fromDate(date: prayerTime),
+        schedule: NotificationCalendar(
+          year: prayerTime.year,
+          month: prayerTime.month,
+          day: prayerTime.day,
+          hour: prayerTime.hour,
+          minute: prayerTime.minute,
+          second: 0,
+          millisecond: 0,
+          preciseAlarm: true,
+          allowWhileIdle: true,
+        ),
       );
 
       print(
@@ -714,15 +861,17 @@ class NotificationService {
     String? locationName,
     bool scheduleSunrise = false,
   }) async {
-    print('🔔 NotificationService: scheduleMonthlyPrayers called (OPTIMIZED)');
+    print('🔔 NotificationService: scheduleMonthlyPrayers called');
     print(
       '🔔 NotificationService: Total prayer times available: ${monthlyPrayerTimes.length} days',
     );
 
-    // iOS has strict notification limits - only schedule 3 days
-    // Android can handle more but we'll limit to avoid performance issues
+    // iOS has strict notification limits (64 max) - only schedule 7 days
+    // Android can handle full month - schedule up to 30 days
     final isIOS = Platform.isIOS;
-    final maxDaysToSchedule = isIOS ? 3 : 14; // Reduced from all to 14 days max
+    final maxDaysToSchedule = isIOS ? 7 : 30; // Full month for Android
+
+    print('🔔 Platform: ${isIOS ? "iOS" : "Android"}, Max days: $maxDaysToSchedule');
 
     // Filter to only include today and future dates
     final now = DateTime.now();
@@ -739,9 +888,7 @@ class NotificationService {
         .take(maxDaysToSchedule)
         .toList();
 
-    print(
-      '🔔 NotificationService: Scheduling ${futurePrayerTimes.length} future days (max: $maxDaysToSchedule)',
-    );
+    print('🔔 NotificationService: Scheduling ${futurePrayerTimes.length} future days');
 
     // Ensure notification service is initialized
     if (!_isInitialized) {
@@ -872,20 +1019,31 @@ class NotificationService {
     String? locationName,
     required int notificationId,
   }) async {
-    final formattedTime = DateFormat('h:mm a').format(prayerTime);
+    final title = _getNotificationTitle(prayerName);
+    final body = _getNotificationBody(prayerName, prayerTime, locationName);
 
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: notificationId,
-        channelKey: 'prayer_channel',
-        title: '🕌 $prayerName Prayer Time',
-        body: locationName != null
-            ? 'It\'s time for $prayerName prayer ($formattedTime) in $locationName'
-            : 'It\'s time for $prayerName prayer ($formattedTime)',
-        notificationLayout: NotificationLayout.Default,
-        category: NotificationCategory.Reminder,
+        channelKey: 'prayer_channel_v3',
+        title: title,
+        body: body,
+        summary: locationName ?? '',
+        notificationLayout: NotificationLayout.BigText,
+        category: NotificationCategory.Alarm,
         wakeUpScreen: true,
-        autoDismissible: true,
+        fullScreenIntent: true,
+        autoDismissible: false,
+        backgroundColor: const Color(0xFF2D1B69),
+        color: const Color(0xFFD4AF37),
+        customSound: 'resource://raw/azan',
+        criticalAlert: true,
+        largeIcon: 'resource://drawable/ic_mosque',
+        payload: {
+          'prayer': prayerName,
+          'time': prayerTime.toIso8601String(),
+          'location': locationName ?? '',
+        },
       ),
       schedule: NotificationCalendar(
         year: prayerTime.year,
@@ -1025,6 +1183,62 @@ class NotificationService {
     return isEnabled;
   }
 
+  // Test notification with azan sound - triggers immediately
+  Future<void> testAzanNotification() async {
+    print('🔔 testAzanNotification: Creating test notification with azan sound...');
+
+    final testTitle = _getNotificationTitle('Test');
+    final testBody = _getNotificationBody('Test', DateTime.now(), 'Test Location');
+
+    try {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: 99999, // Special ID for test notifications
+          channelKey: 'prayer_channel_v3',
+          title: testTitle,
+          body: testBody,
+          summary: 'Test Location',
+          notificationLayout: NotificationLayout.BigText,
+          category: NotificationCategory.Alarm,
+          wakeUpScreen: true,
+          fullScreenIntent: true,
+          autoDismissible: false,
+          backgroundColor: const Color(0xFF2D1B69),
+          color: const Color(0xFFD4AF37),
+          customSound: 'resource://raw/azan',
+          criticalAlert: true,
+          largeIcon: 'resource://drawable/ic_mosque',
+          payload: {'test': 'true', 'prayer': 'Test'},
+        ),
+        actionButtons: [
+          NotificationActionButton(
+            key: 'STOP_AZAN',
+            label: '🔇 Stop Azan',
+            autoDismissible: true,
+            actionType: ActionType.SilentAction,
+          ),
+          NotificationActionButton(
+            key: 'MARK_PRAYED',
+            label: '✅ Mark as Prayed',
+            autoDismissible: true,
+            actionType: ActionType.SilentAction,
+          ),
+        ],
+      );
+
+      print('✅ testAzanNotification: Test notification created successfully!');
+      print('🔊 If you hear the azan sound, the configuration is correct.');
+      print('🔇 If you don\'t hear sound, check:');
+      print('   1. Phone is not on silent/vibrate mode');
+      print('   2. Notification volume is turned up');
+      print('   3. App has notification permissions');
+      print('   4. Notification channel settings allow sound');
+    } catch (e, stackTrace) {
+      print('❌ testAzanNotification: Error creating test notification: $e');
+      print('Stack trace: $stackTrace');
+    }
+  }
+
   // Print all scheduled notifications for debugging
   Future<void> printScheduledNotifications() async {
     final notifications = await getScheduledNotifications();
@@ -1033,13 +1247,9 @@ class NotificationService {
       print('📋 ID: ${notification.content?.id}, Title: ${notification.content?.title}');
       print('📋 Body: ${notification.content?.body}');
       print('📋 Scheduled for: ${notification.schedule}');
+      print('📋 Channel: ${notification.content?.channelKey}');
       print('📋 ---');
     }
     print('📋 ========== END OF LIST ==========');
-  }
-
-  // Dispose audio player
-  void dispose() {
-    _audioPlayer.dispose();
   }
 }

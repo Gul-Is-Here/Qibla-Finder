@@ -22,9 +22,9 @@ class _IslamicCompassWidgetState extends State<IslamicCompassWidget> with Ticker
   late AnimationController _pulseController;
 
   // Islamic color palette
-  static const Color goldAccent = Color(0xFFD4AF37);
-  static const Color deepTeal = Color(0xFF0D4B4B);
-  static const Color emeraldGreen = Color(0xFF1B6B5E);
+  static const Color goldAccent = Color.fromARGB(255, 237, 184, 10);
+  static const Color deepTeal = Color(0xFF8F66FF);
+  static const Color emeraldGreen = Color(0xFF8F66FF);
   static const Color moonWhite = Color(0xFFF8F4E9);
   static const Color darkNight = Color(0xFF0A1F2E);
 

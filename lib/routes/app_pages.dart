@@ -8,14 +8,14 @@ import '../views/zakat_views/zakat_calculator_screen.dart';
 import '../views/home_view/Diker/dhikr_counter_screen.dart';
 import '../views/home_view/common_view/islamic_calendar_screen.dart';
 import '../views/home_view/dua_view/dua_collection_screen.dart';
-import '../views/home_view/mosque_view/enhanced_mosque_finder_screen.dart';
-import '../views/home_view/IslamicResource/enhanced_islamic_features_screen.dart';
-import '../views/home_view/IslamicResource/islamic_features_index_screen.dart';
+
 import '../views/main_navigation_screen.dart';
-import '../views/home_view/IslamicResource/names_of_allah_screen.dart';
+
 import '../views/Compass_view/compass_screen.dart';
+import '../views/onboarding/spiritual_goal_screen.dart';
 import '../views/onboarding/notification_permission_screen.dart';
 import '../views/onboarding/location_permission_screen.dart';
+import '../views/test/notification_test_screen.dart';
 // import '../views/home_view/dua_view/Prayers_views/prayer_times_screen.dart';
 import '../views/Quran_views/quran_list_screen.dart';
 import '../views/Quran_views/quran_reader_screen.dart';
@@ -25,6 +25,7 @@ import '../views/splash_screen.dart';
 
 abstract class Routes {
   static const SPLASH = '/splash';
+  static const SPIRITUAL_GOAL = '/spiritual-goal';
   static const NOTIFICATION_PERMISSION = '/notification-permission';
   static const LOCATION_PERMISSION = '/location-permission';
   static const HOME = '/home';
@@ -47,11 +48,13 @@ abstract class Routes {
   static const DAILY_HADITH = '/daily-hadith';
   static const RAMADAN = '/ramadan';
   static const ZAKAT_CALCULATOR = '/zakat-calculator';
+  static const NOTIFICATION_TEST = '/notification-test';
 }
 
 class AppPages {
   static final routes = [
     GetPage(name: Routes.SPLASH, page: () => const SplashScreen()),
+    GetPage(name: Routes.SPIRITUAL_GOAL, page: () => const SpiritualGoalScreen()),
     GetPage(name: Routes.NOTIFICATION_PERMISSION, page: () => const NotificationPermissionScreen()),
     GetPage(name: Routes.LOCATION_PERMISSION, page: () => const LocationPermissionScreen()),
     GetPage(
@@ -100,31 +103,13 @@ class AppPages {
       page: () => const DuaCollectionScreen(),
       middlewares: [AdTrackingMiddleware()],
     ),
-    GetPage(
-      name: Routes.NAMES_OF_ALLAH,
-      page: () => const NamesOfAllahScreen(),
-      middlewares: [AdTrackingMiddleware()],
-    ),
-    GetPage(
-      name: Routes.MOSQUE_FINDER,
-      page: () => const EnhancedMosqueFinderScreen(),
-      middlewares: [AdTrackingMiddleware()],
-    ),
+
     GetPage(
       name: Routes.DHIKR_COUNTER,
       page: () => const DhikrCounterScreen(),
       middlewares: [AdTrackingMiddleware()],
     ),
-    GetPage(
-      name: Routes.ISLAMIC_FEATURES,
-      page: () => const IslamicFeaturesIndexScreen(),
-      middlewares: [AdTrackingMiddleware()],
-    ),
-    GetPage(
-      name: Routes.ENHANCED_ISLAMIC_FEATURES,
-      page: () => const EnhancedIslamicFeaturesScreen(),
-      middlewares: [AdTrackingMiddleware()],
-    ),
+
     GetPage(
       name: Routes.DAILY_HADITH,
       page: () => const DailyHadithScreen(),
@@ -140,5 +125,6 @@ class AppPages {
       page: () => ZakatCalculatorScreen(),
       middlewares: [AdTrackingMiddleware()],
     ),
+    GetPage(name: Routes.NOTIFICATION_TEST, page: () => const NotificationTestScreen()),
   ];
 }

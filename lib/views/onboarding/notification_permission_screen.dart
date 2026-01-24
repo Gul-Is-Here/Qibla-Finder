@@ -11,139 +11,187 @@ class NotificationPermissionScreen extends StatelessWidget {
   static const Color primaryPurple = Color(0xFF8F66FF);
   static const Color lightPurple = Color(0xFFAB80FF);
   static const Color darkPurple = Color(0xFF2D1B69);
+  static const Color goldAccent = Color(0xFFD4AF37);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 40),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF2D1B69), // Dark purple
+              Color(0xFF8F66FF), // Primary purple
+              Color(0xFFAB80FF), // Light purple
+            ],
+            stops: [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 20),
 
-                // Skip button
-                Align(
-                  alignment: Alignment.topRight,
-                  child: TextButton(
+                  // Skip button
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: TextButton(
+                      onPressed: () => Get.toNamed(Routes.LOCATION_PERMISSION),
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white.withOpacity(0.15),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                        ),
+                      ),
+                      child: Text(
+                        'Skip',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Notification icon with glow
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [primaryPurple, primaryPurple],
+                      ),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.notifications_active_rounded, size: 70, color: Colors.white),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  // Title
+                  Text(
+                    'Never Miss Prayer Time',
+                    style: GoogleFonts.poppins(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Description
+                  Text(
+                    'Get timely notifications for all prayer times with beautiful Azan sounds. Stay connected to your prayers throughout the day.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      color: Colors.white.withOpacity(0.9),
+                      height: 1.6,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  // Features list
+                  _buildFeature(
+                    icon: Icons.access_time_rounded,
+                    title: 'Accurate Prayer Times',
+                    description: 'Based on your location',
+                  ),
+                  const SizedBox(height: 14),
+                  _buildFeature(
+                    icon: Icons.volume_up_rounded,
+                    title: 'Beautiful Azan',
+                    description: 'Traditional call to prayer',
+                  ),
+                  const SizedBox(height: 14),
+                  _buildFeature(
+                    icon: Icons.calendar_today_rounded,
+                    title: 'Daily Reminders',
+                    description: 'Never forget to pray',
+                  ),
+                  const SizedBox(height: 14),
+                  _buildFeature(
+                    icon: Icons.star_rounded,
+                    title: 'Minimal Ads',
+                    description: 'Only 3 short ads per day',
+                  ),
+                  const SizedBox(height: 15),
+
+                  // Allow button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: ElevatedButton(
+                      onPressed: () => _requestNotificationPermission(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: goldAccent,
+                        foregroundColor: darkPurple,
+                        elevation: 12,
+                        shadowColor: goldAccent.withOpacity(0.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.notifications_active_rounded, size: 24, color: Colors.white),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Allow Notifications',
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Later button
+                  TextButton(
                     onPressed: () => Get.toNamed(Routes.LOCATION_PERMISSION),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
                     child: Text(
-                      'Skip',
+                      'Maybe Later',
                       style: GoogleFonts.poppins(
                         fontSize: 16,
-                        color: Colors.grey[600],
+                        color: Colors.white.withOpacity(0.8),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Notification icon
-                Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [primaryPurple.withOpacity(0.2), lightPurple.withOpacity(0.1)],
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.notifications_active_rounded, size: 80, color: primaryPurple),
-                ),
-
-                const SizedBox(height: 30),
-
-                // Title
-                Text(
-                  'Never Miss Prayer Time',
-                  style: GoogleFonts.poppins(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 12),
-
-                // Description
-                Text(
-                  'Get timely notifications for all prayer times with beautiful Azan sounds. Stay connected to your prayers throughout the day.',
-                  style: GoogleFonts.poppins(fontSize: 15, color: Colors.grey[600], height: 1.5),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 30),
-
-                // Features list
-                _buildFeature(
-                  icon: Icons.access_time_rounded,
-                  title: 'Accurate Prayer Times',
-                  description: 'Based on your location',
-                ),
-                const SizedBox(height: 16),
-                _buildFeature(
-                  icon: Icons.volume_up_rounded,
-                  title: 'Beautiful Azan',
-                  description: 'Traditional call to prayer',
-                ),
-                const SizedBox(height: 16),
-                _buildFeature(
-                  icon: Icons.calendar_today_rounded,
-                  title: 'Daily Reminders',
-                  description: 'Never forget to pray',
-                ),
-                const SizedBox(height: 16),
-                _buildFeature(
-                  icon: Icons.ads_click_rounded,
-                  title: 'Minimal Ads',
-                  description: 'Only 3 short ads per day',
-                ),
-
-                const SizedBox(height: 40),
-
-                // Allow button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () => _requestNotificationPermission(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryPurple,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: Text(
-                      'Allow Notifications',
-                      style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Later button
-                TextButton(
-                  onPressed: () => Get.toNamed(Routes.LOCATION_PERMISSION),
-                  child: Text(
-                    'Maybe Later',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-              ],
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
         ),
@@ -156,35 +204,58 @@ class NotificationPermissionScreen extends StatelessWidget {
     required String title,
     required String description,
   }) {
-    return Row(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: primaryPurple.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: primaryPurple,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Icon(icon, color: primaryPurple, size: 24),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [primaryPurple, primaryPurple],
               ),
-              Text(description, style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600])),
-            ],
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: Colors.white, size: 26),
           ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withOpacity(0.8)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

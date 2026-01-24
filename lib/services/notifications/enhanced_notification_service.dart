@@ -43,92 +43,11 @@ class EnhancedNotificationService {
       'prayers_completed'; // Format: "2026-01-09": ["Fajr", "Dhuhr"]
 
   /// Initialize enhanced notification channels
+  /// NOTE: Channels are now initialized in NotificationService.initialize()
+  /// This method is kept for backwards compatibility but does nothing
   Future<void> initializeEnhancedChannels() async {
-    print('🔔 Initializing Enhanced Notification Channels...');
-
-    await AwesomeNotifications().initialize(null, [
-      // Pre-Prayer Reminder Channel (Gentle notification)
-      NotificationChannel(
-        channelKey: 'pre_prayer_reminder',
-        channelName: 'Pre-Prayer Reminders',
-        channelDescription: 'Reminders before prayer time',
-        defaultColor: const Color(0xFF8F66FF),
-        ledColor: Colors.white,
-        importance: NotificationImportance.High,
-        playSound: true,
-        enableVibration: true,
-        // Using default system sound instead of custom sound
-      ),
-
-      // Post-Prayer Check-in Channel
-      NotificationChannel(
-        channelKey: 'post_prayer_checkin',
-        channelName: 'Prayer Check-in',
-        channelDescription: 'Reminders to mark prayer completion',
-        defaultColor: const Color(0xFFD4AF37),
-        importance: NotificationImportance.Default,
-        playSound: false,
-        enableVibration: true,
-      ),
-
-      // Jummah Special Channel
-      NotificationChannel(
-        channelKey: 'jummah_channel',
-        channelName: 'Jummah Reminders',
-        channelDescription: 'Friday prayer reminders',
-        defaultColor: const Color(0xFF2D1B69),
-        ledColor: const Color(0xFFD4AF37),
-        importance: NotificationImportance.Max,
-        playSound: true,
-        enableVibration: true,
-      ),
-
-      // Dhikr Reminder Channel
-      NotificationChannel(
-        channelKey: 'dhikr_reminder',
-        channelName: 'Dhikr Reminders',
-        channelDescription: 'Daily dhikr and remembrance reminders',
-        defaultColor: const Color(0xFF00897B),
-        importance: NotificationImportance.Default,
-        playSound: true,
-        enableVibration: false,
-      ),
-
-      // Optional Prayers Channel (Tahajjud, Duha)
-      NotificationChannel(
-        channelKey: 'optional_prayers',
-        channelName: 'Optional Prayers',
-        channelDescription: 'Reminders for Tahajjud, Duha, etc.',
-        defaultColor: const Color(0xFF4CAF50),
-        importance: NotificationImportance.Default,
-        playSound: true,
-        enableVibration: true,
-      ),
-
-      // Islamic Events Channel
-      NotificationChannel(
-        channelKey: 'islamic_events',
-        channelName: 'Islamic Events',
-        channelDescription: 'Special Islamic dates and events',
-        defaultColor: const Color(0xFFFF9800),
-        importance: NotificationImportance.High,
-        playSound: true,
-        enableVibration: true,
-      ),
-
-      // Achievement/Streak Channel
-      NotificationChannel(
-        channelKey: 'achievements',
-        channelName: 'Achievements',
-        channelDescription: 'Prayer streaks and milestones',
-        defaultColor: const Color(0xFF4CAF50),
-        importance: NotificationImportance.Default,
-        playSound: true,
-        enableVibration: false,
-      ),
-    ], debug: false);
-
-    print('✅ Enhanced Notification Channels initialized');
+    print('🔔 Enhanced Notification Channels already initialized in NotificationService');
+    print('✅ Enhanced features ready to use');
   }
 
   // ==================== 1. PRE-PRAYER REMINDERS ====================

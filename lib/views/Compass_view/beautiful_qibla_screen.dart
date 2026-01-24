@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
@@ -22,100 +21,172 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
   final AdService adService = Get.find<AdService>();
 
   late AnimationController _pulseController;
-  late AnimationController _rotateController;
 
-  // App theme colors - Purple palette
-  static const Color primary = Color(0xFF8F66FF);
+  // App theme colors
+  static const Color primaryPurple = Color(0xFF8F66FF);
   static const Color darkPurple = Color(0xFF2D1B69);
   static const Color goldAccent = Color(0xFFD4AF37);
-  static const Color moonWhite = Color(0xFFF8F4E9);
-  static const Color darkBg = Color(0xFF1A1A2E);
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(duration: const Duration(seconds: 2), vsync: this)
       ..repeat(reverse: true);
-
-    _rotateController = AnimationController(duration: const Duration(seconds: 20), vsync: this)
-      ..repeat();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
-    _rotateController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final compassSize = min(size.width * 0.65, 280.0);
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: darkBg,
-      body: Stack(
-        children: [
-          // Animated starry background
-          _buildStarryBackground(size),
-
-          // Main content
-          SafeArea(
-            child: CustomScrollView(
-              slivers: [
-                // Custom App Bar
-                SliverToBoxAdapter(child: _buildIslamicHeader()),
-
-                // Compass Section
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Column(
-                      children: [
-                        // const SizedBox(height: 30),
-
-                        // Bismillah with decorative frame
-                        _buildBismillahSection(),
-
-                        const OptimizedBannerAdWidget(padding: EdgeInsets.symmetric(horizontal: 0)),
-                        const SizedBox(height: 20),
-
-                        // Stats Cards
-                        _buildStatsRow(),
-
-                        const SizedBox(height: 24),
-
-                        // Main Compass with Islamic Design
-                        _buildIslamicCompass(size),
-
-                        const SizedBox(height: 20),
-
-                        // Qibla Accuracy Indicator
-                        _buildQiblaAccuracyIndicator(),
-
-                        const SizedBox(height: 16),
-
-                        // Banner Ad
-                        const SizedBox(height: 16),
-
-                        // City Selector with Islamic Design
-                        _buildIslamicCitySelector(),
-
-                        const SizedBox(height: 16),
-
-                        // Calibration Guide
-                        Obx(
-                          () => controller.calibrationNeeded.value
-                              ? _buildIslamicCalibrationGuide()
-                              : const SizedBox.shrink(),
-                        ),
-
-                        const SizedBox(height: 30),
-                      ],
-                    ),
+      backgroundColor: Colors.grey[50],
+      body: CustomScrollView(
+        slivers: [
+          // App Bar
+          SliverAppBar(
+            expandedHeight: 100,
+            pinned: true,
+            elevation: 0,
+            backgroundColor: primaryPurple,
+            automaticallyImplyLeading: false,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [primaryPurple, darkPurple],
                   ),
                 ),
+                child: Stack(
+                  children: [
+                    // Decorative moon
+                    Positioned(
+                      right: 20,
+                      top: 40,
+                      child: Icon(
+                        Icons.nightlight_round,
+                        color: goldAccent.withOpacity(0.3),
+                        size: 60,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.explore, color: goldAccent, size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Qibla Finder',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              centerTitle: true,
+            ),
+          ),
+
+          // Content
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+
+                // Status Row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatusChip(
+                          icon: Icons.wifi,
+                          label: 'Online',
+                          isActiveBuilder: () => controller.isOnline.value,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatusChip(
+                          icon: Icons.gps_fixed,
+                          label: 'GPS',
+                          isActiveBuilder: () => controller.locationReady.value,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Bismillah Card
+                // _buildBismillahCard(),
+                // const SizedBox(height: 16),
+
+                // Banner Ad
+                const OptimizedBannerAdWidget(padding: EdgeInsets.symmetric(horizontal: 20)),
+
+                const SizedBox(height: 16),
+
+                // Stats Row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          icon: Icons.explore,
+                          label: 'Qibla',
+                          valueBuilder: () => '${controller.qiblaAngle.value.round()}°',
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          icon: Icons.mosque,
+                          label: 'Distance',
+                          valueBuilder: () => controller.formattedDistance,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Main Compass
+                _buildCompassSection(compassSize),
+
+                // const SizedBox(height: 20),
+
+                // Accuracy Indicator
+                _buildAccuracyIndicator(),
+
+                const SizedBox(height: 20),
+
+                // City Selector
+                _buildCitySelector(),
+
+                const SizedBox(height: 16),
+
+                // Calibration Warning
+                Obx(
+                  () => controller.calibrationNeeded.value
+                      ? _buildCalibrationCard()
+                      : const SizedBox.shrink(),
+                ),
+
+                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -124,289 +195,133 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
     );
   }
 
-  Widget _buildStarryBackground(Size size) {
-    return Stack(
-      children: [
-        // Gradient background
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF1A1A2E), Color(0xFF2D1B69), Color(0xFF3D2B7A), Color(0xFF8F66FF)],
-              stops: [0.0, 0.3, 0.6, 1.0],
-            ),
+  Widget _buildStatusChip({
+    required IconData icon,
+    required String label,
+    required bool Function() isActiveBuilder,
+  }) {
+    return Obx(() {
+      final isActive = isActiveBuilder();
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? primaryPurple.withOpacity(0.3) : Colors.grey.withOpacity(0.2),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: (isActive ? primaryPurple : Colors.grey).withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-
-        // Animated stars
-        ...List.generate(30, (index) {
-          final random = Random(index);
-          return Positioned(
-            left: random.nextDouble() * size.width,
-            top: random.nextDouble() * size.height * 0.6,
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: 0.3 + (_pulseController.value * 0.7 * (index % 3 == 0 ? 1 : 0.5)),
-                  child: Icon(Icons.star, size: 2 + random.nextDouble() * 4, color: Colors.white),
-                );
-              },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isActive ? Colors.green : Colors.grey,
+              ),
             ),
-          );
-        }),
-
-        // Crescent moon
-        Positioned(
-          top: 60,
-          right: 30,
-          child: AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: 1 + (_pulseController.value * 0.05),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: goldAccent.withOpacity(0.5),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Icon(Icons.nightlight_round, color: goldAccent, size: 36),
-                ),
-              );
-            },
-          ),
+            const SizedBox(width: 8),
+            Icon(icon, size: 18, color: isActive ? primaryPurple : Colors.grey),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isActive ? Colors.grey[800] : Colors.grey,
+              ),
+            ),
+          ],
         ),
-      ],
-    );
+      );
+    });
   }
 
-  Widget _buildIslamicHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Status chips
-          Row(
-            children: [
-              Obx(
-                () => _buildStatusChip(
-                  icon: controller.isOnline.value ? Icons.wifi : Icons.wifi_off,
-                  label: controller.isOnline.value ? 'Online' : 'Offline',
-                  isActive: controller.isOnline.value,
-                ),
-              ),
-            ],
-          ),
-
-          // Title
-          Column(
-            children: [
-              Text(
-                'QIBLA',
-                style: GoogleFonts.cinzel(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: goldAccent,
-                  letterSpacing: 4,
-                ),
-              ),
-              Text(
-                'FINDER',
-                style: GoogleFonts.cinzel(
-                  fontSize: 12,
-                  color: moonWhite.withOpacity(0.8),
-                  letterSpacing: 6,
-                ),
-              ),
-            ],
-          ),
-
-          // Location status
-          Obx(
-            () => _buildStatusChip(
-              icon: controller.locationReady.value ? Icons.gps_fixed : Icons.gps_off,
-              label: controller.locationReady.value ? 'GPS' : 'Manual',
-              isActive: controller.locationReady.value,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusChip({required IconData icon, required String label, required bool isActive}) {
+  Widget _buildBismillahCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: (isActive ? primary : Colors.grey).withOpacity(0.3),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: (isActive ? goldAccent : Colors.grey).withOpacity(0.5), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: isActive ? goldAccent : Colors.grey),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 10,
-              color: isActive ? moonWhite : Colors.grey,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBismillahSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [goldAccent.withOpacity(0.1), Colors.transparent, goldAccent.withOpacity(0.1)],
+          colors: [primaryPurple.withOpacity(0.1), darkPurple.withOpacity(0.05)],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: goldAccent.withOpacity(0.3)),
       ),
       child: Column(
         children: [
-          // Decorative Islamic pattern top
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildDecorativeLine(),
-              const SizedBox(width: 12),
-              Icon(Icons.star, color: goldAccent, size: 12),
-              const SizedBox(width: 12),
-              _buildDecorativeLine(),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Bismillah text
           Text(
             'بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ',
-            style: GoogleFonts.amiri(fontSize: 26, color: goldAccent, fontWeight: FontWeight.w600),
+            style: GoogleFonts.amiri(fontSize: 24, color: darkPurple, fontWeight: FontWeight.w600),
           ),
-
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'In the name of Allah, the Most Gracious, the Most Merciful',
             style: GoogleFonts.poppins(
               fontSize: 11,
-              color: moonWhite.withOpacity(0.7),
+              color: Colors.grey[600],
               fontStyle: FontStyle.italic,
             ),
             textAlign: TextAlign.center,
           ),
-
-          const SizedBox(height: 12),
-          // Decorative Islamic pattern bottom
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildDecorativeLine(),
-              const SizedBox(width: 12),
-              Icon(Icons.star, color: goldAccent, size: 12),
-              const SizedBox(width: 12),
-              _buildDecorativeLine(),
-            ],
-          ),
-          const SizedBox(height: 12),
         ],
       ),
-    ).animate().fadeIn(duration: 800.ms).slideY(begin: -0.2, end: 0);
-  }
-
-  Widget _buildDecorativeLine() {
-    return Container(
-      width: 60,
-      height: 2,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.transparent, goldAccent, Colors.transparent]),
-        borderRadius: BorderRadius.circular(1),
-      ),
-    );
-  }
-
-  Widget _buildStatsRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.explore,
-            title: 'QIBLA',
-            valueBuilder: () => '${controller.qiblaAngle.value.round()}°',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: Icons.mosque,
-            title: 'DISTANCE',
-            valueBuilder: () => controller.formattedDistance,
-          ),
-        ),
-      ],
-    ).animate().fadeIn(duration: 600.ms, delay: 200.ms);
+    ).animate().fadeIn(duration: 500.ms);
   }
 
   Widget _buildStatCard({
     required IconData icon,
-    required String title,
+    required String label,
     required String Function() valueBuilder,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 0),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [darkPurple.withOpacity(0.8), primary.withOpacity(0.6)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: goldAccent.withOpacity(0.3), width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: primary.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: primaryPurple.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: goldAccent.withOpacity(0.2), shape: BoxShape.circle),
-            child: Icon(icon, color: goldAccent, size: 20),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: primaryPurple.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: primaryPurple, size: 22),
           ),
           const SizedBox(height: 10),
           Obx(
             () => Text(
               valueBuilder(),
-              style: GoogleFonts.cinzel(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: moonWhite,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: darkPurple,
               ),
             ),
           ),
-          const SizedBox(height: 4),
           Text(
-            title,
+            label,
             style: GoogleFonts.poppins(
-              fontSize: 10,
-              color: moonWhite.withOpacity(0.9),
-              letterSpacing: 2,
+              fontSize: 12,
+              color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -415,147 +330,144 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
     );
   }
 
-  Widget _buildIslamicCompass(Size size) {
-    final compassSize = min(size.width * 0.50, 240.0);
-
+  Widget _buildCompassSection(double compassSize) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: [darkPurple.withOpacity(0.3), darkBg.withOpacity(0.8)]),
-        border: Border.all(color: goldAccent.withOpacity(0.4), width: 3),
-        boxShadow: [
-          BoxShadow(color: goldAccent.withOpacity(0.2), blurRadius: 30, spreadRadius: 5),
-          BoxShadow(color: primary.withOpacity(0.3), blurRadius: 50, spreadRadius: 10),
-        ],
+        // gradient: LinearGradient(
+        //   begin: Alignment.topLeft,
+        //   end: Alignment.bottomRight,
+        //   colors: [primaryPurple, darkPurple],
+        // ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [],
       ),
-      child: Stack(
-        alignment: Alignment.center,
+      child: Column(
         children: [
-          // Outer decorative ring
-          AnimatedBuilder(
-            animation: _rotateController,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _rotateController.value * 2 * pi * 0.1,
-                child: Container(
-                  width: compassSize + 30,
-                  height: compassSize + 30,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: goldAccent.withOpacity(0.15), width: 1),
-                  ),
-                  child: CustomPaint(painter: _IslamicPatternPainter(goldAccent.withOpacity(0.3))),
-                ),
-              );
-            },
+          // Compass
+          Container(
+            padding: const EdgeInsets.all(0),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: primaryPurple,
+              border: Border.all(color: goldAccent.withOpacity(0.5), width: 2),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Compass Widget
+                IslamicCompassWidget(controller: controller, compassSize: compassSize),
+
+                // Center Kaaba indicator
+                Obx(() {
+                  final headingRad = controller.heading.value * (pi / 180);
+                  final qiblaRad = controller.qiblaAngle.value * (pi / 180);
+                  final angle = qiblaRad - headingRad;
+
+                  return Transform.rotate(
+                    angle: angle,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: goldAccent.withOpacity(0.2),
+                      ),
+                      child: Icon(Icons.mosque, color: goldAccent, size: 22),
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
 
-          // Compass Widget
-          IslamicCompassWidget(controller: controller, compassSize: compassSize),
+          // const SizedBox(height: 16),
 
-          // Center Kaaba icon - Rotates to align with Qibla direction
-          Obx(() {
-            final headingRad = controller.heading.value * (pi / 180);
-            final qiblaRad = controller.qiblaAngle.value * (pi / 180);
-            final qiblaIndicatorAngle = qiblaRad - headingRad;
-
-            return Transform.rotate(
-              angle: qiblaIndicatorAngle,
-              child: Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [goldAccent.withOpacity(0.3), Colors.transparent],
-                  ),
-                ),
-                child: Center(child: Icon(Icons.mosque, color: goldAccent, size: 24)),
+          // Direction text
+          Obx(
+            () => Text(
+              '${controller.heading.value.round()}° ${_getDirection(controller.heading.value)}',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
-            );
-          }),
+            ),
+          ),
         ],
       ),
     ).animate().scale(
-      duration: 800.ms,
+      duration: 600.ms,
       curve: Curves.easeOutBack,
-      begin: const Offset(0.8, 0.8),
+      begin: const Offset(0.9, 0.9),
       end: const Offset(1, 1),
     );
   }
 
-  Widget _buildQiblaAccuracyIndicator() {
+  String _getDirection(double heading) {
+    if (heading >= 337.5 || heading < 22.5) return 'N';
+    if (heading >= 22.5 && heading < 67.5) return 'NE';
+    if (heading >= 67.5 && heading < 112.5) return 'E';
+    if (heading >= 112.5 && heading < 157.5) return 'SE';
+    if (heading >= 157.5 && heading < 202.5) return 'S';
+    if (heading >= 202.5 && heading < 247.5) return 'SW';
+    if (heading >= 247.5 && heading < 292.5) return 'W';
+    return 'NW';
+  }
+
+  Widget _buildAccuracyIndicator() {
     return Obx(() {
       final isAccurate = controller.locationReady.value && !controller.calibrationNeeded.value;
 
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isAccurate
-                ? [primary.withOpacity(0.3), darkPurple.withOpacity(0.3)]
-                : [Colors.orange.withOpacity(0.3), Colors.orange.withOpacity(0.1)],
-          ),
-          borderRadius: BorderRadius.circular(30),
+          color: isAccurate ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isAccurate ? goldAccent.withOpacity(0.5) : Colors.orange.withOpacity(0.5),
-            width: 1.5,
+            color: isAccurate ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3),
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 12,
-              height: 12,
+              width: 10,
+              height: 10,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isAccurate ? Colors.green : Colors.orange,
-                boxShadow: [
-                  BoxShadow(
-                    color: (isAccurate ? Colors.green : Colors.orange).withOpacity(0.5),
-                    blurRadius: 8,
-                    spreadRadius: 2,
-                  ),
-                ],
               ),
             ),
             const SizedBox(width: 10),
             Text(
-              isAccurate
-                  ? 'Accurate Qibla Direction'
-                  : controller.locationError.value.isEmpty
-                  ? 'Manual Mode Active'
-                  : controller.locationError.value,
+              isAccurate ? 'Accurate Qibla Direction' : 'Manual Mode Active',
               style: GoogleFonts.poppins(
                 fontSize: 13,
-                color: moonWhite,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
+                color: isAccurate ? Colors.green[700] : Colors.orange[700],
               ),
             ),
           ],
         ),
       );
-    }).animate().fadeIn(duration: 500.ms, delay: 400.ms);
+    });
   }
 
-  Widget _buildIslamicCitySelector() {
+  Widget _buildCitySelector() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [darkPurple.withOpacity(0.6), primary.withOpacity(0.4)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: goldAccent.withOpacity(0.3), width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: darkPurple.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: primaryPurple.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -565,42 +477,38 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: goldAccent.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  color: primaryPurple.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.location_city, color: goldAccent, size: 22),
+                child: Icon(Icons.location_city, color: primaryPurple, size: 20),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Offline Qibla',
-                      style: GoogleFonts.cinzel(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: goldAccent,
-                      ),
-                    ),
-                    Text(
-                      'Select your city when GPS is unavailable',
-                      style: GoogleFonts.poppins(fontSize: 11, color: moonWhite.withOpacity(0.7)),
-                    ),
-                  ],
+              Text(
+                'Offline Qibla',
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[800],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
+          Text(
+            'Select city when GPS is unavailable',
+            style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 12),
+
+          // Dropdown
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: darkBg.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: goldAccent.withOpacity(0.2)),
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.withOpacity(0.2)),
             ),
             child: Obx(
               () => DropdownButton<int>(
@@ -609,176 +517,116 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
                     : null,
                 hint: Text(
                   'Choose your city...',
-                  style: GoogleFonts.poppins(fontSize: 14, color: moonWhite.withOpacity(0.6)),
+                  style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[500]),
                 ),
                 isExpanded: true,
                 underline: const SizedBox(),
-                dropdownColor: darkPurple,
-                icon: Icon(Icons.keyboard_arrow_down, color: goldAccent),
+                icon: Icon(Icons.keyboard_arrow_down, color: primaryPurple),
                 items: List.generate(
                   QiblaController.popularCities.length,
                   (index) => DropdownMenuItem<int>(
                     value: index,
                     child: Text(
                       QiblaController.popularCities[index]['name'] as String,
-                      style: GoogleFonts.poppins(fontSize: 14, color: moonWhite),
+                      style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[800]),
                     ),
                   ),
                 ),
                 onChanged: (index) {
-                  if (index != null) {
-                    controller.selectCity(index);
-                  }
+                  if (index != null) controller.selectCity(index);
                 },
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          // Action Buttons Row
+
+          // Action buttons
           Obx(
             () => controller.selectedCityIndex.value >= 0
-                ? Row(
-                    children: [
-                      // Use Current Location Button
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => controller.useCurrentLocation(),
-                          icon: const Icon(Icons.my_location, size: 18),
-                          label: Text(
-                            'Use Current Location',
-                            style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primary,
-                            foregroundColor: moonWhite,
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 3,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Refresh Button
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [goldAccent.withOpacity(0.8), goldAccent],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: goldAccent.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => controller.useCurrentLocation(),
+                            icon: const Icon(Icons.my_location, size: 18),
+                            label: Text('Use GPS', style: GoogleFonts.poppins(fontSize: 13)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: primaryPurple,
+                              side: BorderSide(color: primaryPurple.withOpacity(0.5)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                          ],
+                          ),
                         ),
-                        child: IconButton(
-                          onPressed: () => controller.refreshQibla(),
-                          icon: const Icon(Icons.refresh, color: darkBg),
-                          tooltip: 'Refresh Qibla',
-                          padding: const EdgeInsets.all(12),
+                        const SizedBox(width: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: primaryPurple,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: IconButton(
+                            onPressed: () => controller.refreshQibla(),
+                            icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 600.ms, delay: 500.ms).slideY(begin: 0.2, end: 0);
+    );
   }
 
-  Widget _buildIslamicCalibrationGuide() {
+  Widget _buildCalibrationCard() {
     return Container(
-          margin: const EdgeInsets.only(top: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.orange.withOpacity(0.2), Colors.orange.withOpacity(0.1)],
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
             ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.orange.withOpacity(0.5), width: 1.5),
+            child: const Icon(
+              Icons.screen_rotation,
+              color: Colors.orange,
+              size: 24,
+            ).animate(onPlay: (c) => c.repeat()).rotate(duration: 2000.ms),
           ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Calibration Needed',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange[800],
+                  ),
                 ),
-                child: Icon(
-                  Icons.screen_rotation,
-                  color: Colors.orange,
-                  size: 28,
-                ).animate(onPlay: (c) => c.repeat()).rotate(duration: 2000.ms),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Calibration Needed',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Move your phone in a figure-8 pattern to improve compass accuracy',
-                      style: GoogleFonts.poppins(fontSize: 12, color: moonWhite.withOpacity(0.8)),
-                    ),
-                  ],
+                Text(
+                  'Move phone in figure-8 pattern',
+                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.orange[700]),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        )
-        .animate()
-        .shake(duration: 500.ms)
-        .then()
-        .shimmer(
-          duration: 2000.ms,
-          colors: [Colors.transparent, Colors.orange.withOpacity(0.3), Colors.transparent],
-        );
+        ],
+      ),
+    ).animate().fadeIn().shake(duration: 300.ms);
   }
-}
-
-// Custom painter for Islamic geometric patterns
-class _IslamicPatternPainter extends CustomPainter {
-  final Color color;
-
-  _IslamicPatternPainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-
-    // Draw 8-pointed star pattern
-    for (int i = 0; i < 8; i++) {
-      final angle = (i * pi / 4);
-      final startPoint = Offset(
-        center.dx + (radius - 10) * cos(angle),
-        center.dy + (radius - 10) * sin(angle),
-      );
-      final endPoint = Offset(
-        center.dx + (radius - 30) * cos(angle + pi / 8),
-        center.dy + (radius - 30) * sin(angle + pi / 8),
-      );
-      canvas.drawLine(startPoint, endPoint, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

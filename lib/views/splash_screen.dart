@@ -31,7 +31,7 @@ class _SplashScreenState extends State<SplashScreen> {
         final locationPermissionGranted = storage.read('location_permission_granted') ?? false;
 
         // Debug: Print flag values
-        print('� Splash Screen - Quick check:');
+        print('🚀 Splash Screen - Quick check:');
         print('   onboarding_completed: $onboardingCompleted');
         print('   location_permission_granted: $locationPermissionGranted');
 
@@ -44,14 +44,14 @@ class _SplashScreenState extends State<SplashScreen> {
             print('⚠️ Resetting onboarding flag');
             storage.write('onboarding_completed', false);
           }
-          print('📱 Showing Onboarding Screen');
-          Get.offNamed(Routes.NOTIFICATION_PERMISSION);
+          print('📱 Showing Spiritual Goal Screen (First Onboarding)');
+          Get.offNamed(Routes.SPIRITUAL_GOAL);
         }
       }
     } catch (e) {
       print('Splash error: $e');
       if (mounted) {
-        Get.offNamed(Routes.NOTIFICATION_PERMISSION);
+        Get.offNamed(Routes.SPIRITUAL_GOAL);
       }
     }
   }

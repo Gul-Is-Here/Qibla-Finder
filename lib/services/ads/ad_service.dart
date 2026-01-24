@@ -108,24 +108,44 @@ class AdService extends GetxController {
   }
 
   Future<void> _initializeAds() async {
-    await MobileAds.instance.initialize();
+    try {
+      print('🚀 Initializing Mobile Ads SDK...');
+      await MobileAds.instance.initialize();
 
-    // Set request configuration for better performance
-    await MobileAds.instance.updateRequestConfiguration(
-      RequestConfiguration(
-        tagForChildDirectedTreatment: TagForChildDirectedTreatment.no,
-        tagForUnderAgeOfConsent: TagForUnderAgeOfConsent.no,
-      ),
-    );
+      // Set request configuration for better performance and compliance
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(
+          tagForChildDirectedTreatment: TagForChildDirectedTreatment.no,
+          tagForUnderAgeOfConsent: TagForUnderAgeOfConsent.no,
+          // Disable InMobi and other mediations that aren't set up
+          testDeviceIds: [], // Add test device IDs if testing
+        ),
+      );
 
-    _loadBannerAd();
-    _loadBottomBannerAd(); // Load second banner ad
-    _loadInterstitialAd();
-    _loadRewardedAd();
+      print('✅ Mobile Ads SDK initialized successfully');
 
-    // Start automatic interstitial ad timer
-    print('🚀 Starting automatic interstitial ad timer');
-    startAutoInterstitialTimer();
+      // Load ads with delays to avoid overwhelming the system
+      _loadBannerAd();
+
+      Future.delayed(const Duration(seconds: 2), () {
+        _loadBottomBannerAd(); // Load second banner ad after delay
+      });
+
+      Future.delayed(const Duration(seconds: 4), () {
+        _loadInterstitialAd();
+      });
+
+      Future.delayed(const Duration(seconds: 6), () {
+        _loadRewardedAd();
+      });
+
+      // Start automatic interstitial ad timer
+      print('🚀 Starting automatic interstitial ad timer');
+      startAutoInterstitialTimer();
+    } catch (e) {
+      print('❌ Error initializing ads: $e');
+      // Continue without ads if initialization fails
+    }
   }
 
   // Banner Ad Methods
@@ -143,16 +163,27 @@ class AdService extends GetxController {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           isBannerAdLoaded.value = true;
-          print('Banner ad loaded successfully');
+          print('✅ Banner ad loaded successfully');
         },
         onAdFailedToLoad: (ad, error) {
           isBannerAdLoaded.value = false;
           ad.dispose();
-          print('Banner ad failed to load: $error');
 
-          // Retry after 30 seconds
-          Future.delayed(const Duration(seconds: 30), () {
-            _loadBannerAd();
+          // More specific error handling
+          if (error.code == 3) {
+            print(
+              'ℹ️ Banner ad: No fill available (error code 3) - This is normal when no ads are available',
+            );
+          } else {
+            print('❌ Banner ad failed to load: ${error.message} (code: ${error.code})');
+          }
+
+          // Retry with exponential backoff (30s, 60s, 120s)
+          final retryDelay = _bannerAd == null ? 30 : 60;
+          Future.delayed(Duration(seconds: retryDelay), () {
+            if (!isBannerAdLoaded.value) {
+              _loadBannerAd();
+            }
           });
         },
         onAdClicked: (ad) {
@@ -282,16 +313,27 @@ class AdService extends GetxController {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           isBottomBannerAdLoaded.value = true;
-          print('Bottom banner ad loaded successfully');
+          print('✅ Bottom banner ad loaded successfully');
         },
         onAdFailedToLoad: (ad, error) {
           isBottomBannerAdLoaded.value = false;
           ad.dispose();
-          print('Bottom banner ad failed to load: $error');
 
-          // Retry after 30 seconds
-          Future.delayed(const Duration(seconds: 30), () {
-            _loadBottomBannerAd();
+          // More specific error handling
+          if (error.code == 3) {
+            print(
+              'ℹ️ Bottom banner ad: No fill/HTTP 403 (error code 3) - Common when testing or low ad inventory',
+            );
+          } else {
+            print('❌ Bottom banner ad failed: ${error.message} (code: ${error.code})');
+          }
+
+          // Retry with longer delay for 403 errors
+          final retryDelay = error.code == 3 ? 60 : 30;
+          Future.delayed(Duration(seconds: retryDelay), () {
+            if (!isBottomBannerAdLoaded.value) {
+              _loadBottomBannerAd();
+            }
           });
         },
         onAdClicked: (ad) {
@@ -320,15 +362,27 @@ class AdService extends GetxController {
 
           // Remove immersive mode to ensure close button is always visible
           // _interstitialAd?.setImmersiveMode(true); // Commented out for family compliance
-          print('Interstitial ad loaded successfully');
+          print('✅ Interstitial ad loaded successfully');
         },
         onAdFailedToLoad: (error) {
           isInterstitialAdLoaded.value = false;
-          print('Interstitial ad failed to load: $error');
 
-          // Retry after 60 seconds
-          Future.delayed(const Duration(seconds: 60), () {
-            _loadInterstitialAd();
+          // Better error logging with specific messages
+          if (error.message.contains('InMobi')) {
+            print('ℹ️ InMobi Interstitial load failed: ${error.message}');
+            print('   This is normal if InMobi mediation is not configured or has issues');
+          } else if (error.code == 3) {
+            print('ℹ️ Interstitial: No fill available (code 3) - AdMob will try again');
+          } else {
+            print('❌ Interstitial load failed: ${error.message} (code: ${error.code})');
+          }
+
+          // Retry with longer delay for InMobi/mediation errors
+          final retryDelay = error.message.contains('InMobi') ? 120 : 60;
+          Future.delayed(Duration(seconds: retryDelay), () {
+            if (!isInterstitialAdLoaded.value) {
+              _loadInterstitialAd();
+            }
           });
         },
       ),
@@ -607,33 +661,45 @@ class AdService extends GetxController {
     }
 
     final lastResetDate = DateTime.parse(lastResetDateStr);
-    final nextResetTime = _getNextResetTime(lastResetDate);
 
-    // Check if we've passed the next reset time (5 AM)
-    if (now.isAfter(nextResetTime)) {
+    // Calculate today's 5 AM reset time
+    final todayResetTime = DateTime(now.year, now.month, now.day, _resetHour, 0, 0);
+
+    // Calculate last reset date's 5 AM
+    final lastResetDateTime = DateTime(
+      lastResetDate.year,
+      lastResetDate.month,
+      lastResetDate.day,
+      _resetHour,
+      0,
+      0,
+    );
+
+    // Check if we've passed a 5 AM since the last reset
+    // Reset if: current time is after today's 5 AM AND last reset was before today's 5 AM
+    if (now.isAfter(todayResetTime) && lastResetDateTime.isBefore(todayResetTime)) {
       _storage.write(_keyAdCount, 0);
       _storage.write(_keyLastResetDate, _getResetDateKey(now));
       print(
-        '🔄 Daily ad limit reset at ${now.hour}:${now.minute} - Count: 0/$_maxInterstitialAdsPerDay',
+        '🔄 Daily ad limit reset at ${now.hour}:${now.minute.toString().padLeft(2, '0')} - Count: 0/$_maxInterstitialAdsPerDay',
       );
     } else {
       final currentCount = _storage.read<int>(_keyAdCount) ?? 0;
       print(
-        '📊 Current daily ad count: $currentCount/$_maxInterstitialAdsPerDay (Resets at 5:00 AM)',
+        '📊 Current daily ad count: $currentCount/$_maxInterstitialAdsPerDay (Next reset: ${_getNextResetTimeFormatted(now)})',
       );
     }
   }
 
-  /// Get the next 5 AM reset time from a given date
-  DateTime _getNextResetTime(DateTime from) {
-    var resetTime = DateTime(from.year, from.month, from.day, _resetHour, 0, 0);
+  /// Get formatted next reset time for display
+  String _getNextResetTimeFormatted(DateTime now) {
+    final todayReset = DateTime(now.year, now.month, now.day, _resetHour, 0, 0);
 
-    // If current time is past today's reset time, schedule for tomorrow
-    if (from.hour >= _resetHour) {
-      resetTime = resetTime.add(const Duration(days: 1));
+    if (now.isBefore(todayReset)) {
+      return 'Today at 5:00 AM';
+    } else {
+      return 'Tomorrow at 5:00 AM';
     }
-
-    return resetTime;
   }
 
   /// Get a date key for storage (format: YYYY-MM-DD)

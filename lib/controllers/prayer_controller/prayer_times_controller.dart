@@ -174,6 +174,21 @@ class PrayerTimesController extends GetxController {
     await _notificationService.printScheduledNotifications();
   }
 
+  // Test notification with azan sound
+  Future<void> testAzanNotification() async {
+    print('🔔 PrayerTimesController: Testing azan notification...');
+    await _notificationService.testAzanNotification();
+
+    Get.snackbar(
+      '🔔 Test Notification Sent',
+      'Check if you can hear the azan sound. Make sure phone is not on silent mode.',
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 4),
+      backgroundColor: Colors.teal,
+      colorText: Colors.white,
+    );
+  }
+
   Future<void> fetchPrayerTimes({DateTime? date}) async {
     try {
       isLoading.value = true;
