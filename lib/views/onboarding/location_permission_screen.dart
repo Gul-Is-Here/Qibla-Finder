@@ -959,19 +959,19 @@ class LocationPermissionScreen extends StatelessWidget {
   }
 
   Future<void> _completeOnboarding() async {
-    // Mark onboarding as completed
+    // Mark onboarding as completed with new flag name
     final storage = GetStorage();
-    await storage.write('onboarding_completed', true);
+    await storage.write('hasCompletedOnboarding', true);
 
     // Add small delay to ensure storage write completes
     await Future.delayed(const Duration(milliseconds: 100));
 
     print('✅ Onboarding completed flag set to: true');
     print('🔍 Final storage state:');
-    print('   onboarding_completed: ${storage.read('onboarding_completed')}');
+    print('   hasCompletedOnboarding: ${storage.read('hasCompletedOnboarding')}');
     print('   location_permission_granted: ${storage.read('location_permission_granted')}');
 
-    // Navigate to main screen
-    Get.offAllNamed(Routes.MAIN);
+    // Navigate to sign in screen after onboarding
+    Get.offAllNamed(Routes.SIGN_IN);
   }
 }

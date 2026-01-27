@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../../services/ads/ad_service.dart';
+import '../../services/subscription_service.dart';
+import 'subscription_prompt_banner.dart';
 
 class OptimizedBannerAdWidget extends StatefulWidget {
   final EdgeInsets? padding;
@@ -9,15 +11,14 @@ class OptimizedBannerAdWidget extends StatefulWidget {
   final bool isBottomBanner; // New parameter to specify which banner to use
 
   const OptimizedBannerAdWidget({
-    Key? key,
+    super.key,
     this.padding,
     this.showOnlyWhenLoaded = true,
     this.isBottomBanner = false, // Default to top banner
-  }) : super(key: key);
+  });
 
   @override
-  State<OptimizedBannerAdWidget> createState() =>
-      _OptimizedBannerAdWidgetState();
+  State<OptimizedBannerAdWidget> createState() => _OptimizedBannerAdWidgetState();
 }
 
 class _OptimizedBannerAdWidgetState extends State<OptimizedBannerAdWidget> {
@@ -37,9 +38,7 @@ class _OptimizedBannerAdWidgetState extends State<OptimizedBannerAdWidget> {
 
     // Create a unique banner ad instance using AdService
     final adService = Get.find<AdService>();
-    _localBannerAd = adService.createUniqueBannerAd(
-      customKey: widget.key.toString(),
-    );
+    _localBannerAd = adService.createUniqueBannerAd(customKey: widget.key.toString());
 
     if (_localBannerAd != null) {
       _localBannerAd!.load();
@@ -56,30 +55,29 @@ class _OptimizedBannerAdWidgetState extends State<OptimizedBannerAdWidget> {
   Widget build(BuildContext context) {
     // Don't show ads if disabled for store submission
     if (AdService.areAdsDisabled) {
-      return const SizedBox.shrink();
+      return const SubscriptionPromptBanner();
+    }
+
+    // Check if user is premium (safe check - service might not be initialized yet)
+    try {
+      if (Get.isRegistered<SubscriptionService>()) {
+        final subscriptionService = Get.find<SubscriptionService>();
+        if (subscriptionService.isPremium) {
+          return const SizedBox.shrink();
+        }
+      }
+    } catch (e) {
+      // Subscription service not ready yet, continue to show ads/prompts
     }
 
     // Use local banner ad instead of shared service ads
     if (_localBannerAd == null && widget.showOnlyWhenLoaded) {
-      return const SizedBox.shrink();
+      return const SubscriptionPromptBanner();
     }
 
     // Additional safety check to ensure ad is loaded
     if (_localBannerAd == null) {
-      return Container(
-        padding: widget.padding ?? const EdgeInsets.all(8.0),
-        width: 320,
-        height: 50,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Center(
-            child: Text('Ad Loading...', style: TextStyle(color: Colors.grey)),
-          ),
-        ),
-      );
+      return const SubscriptionPromptBanner();
     }
 
     return Container(

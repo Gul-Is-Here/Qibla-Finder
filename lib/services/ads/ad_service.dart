@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../subscription_service.dart';
 
 class AdService extends GetxController {
   static AdService get instance => Get.find<AdService>();
@@ -156,6 +157,12 @@ class AdService extends GetxController {
       return;
     }
 
+    // Check if user has premium subscription
+    if (_isPremiumUser()) {
+      print('⭐ User is premium - skipping banner ad');
+      return;
+    }
+
     _bannerAd = BannerAd(
       adUnitId: _bannerAdUnitId,
       size: AdSize.banner,
@@ -306,6 +313,12 @@ class AdService extends GetxController {
       return;
     }
 
+    // Check if user has premium subscription
+    if (_isPremiumUser()) {
+      print('⭐ User is premium - skipping bottom banner ad');
+      return;
+    }
+
     _bottomBannerAd = BannerAd(
       adUnitId: _bottomBannerAdUnitId,
       size: AdSize.banner,
@@ -352,6 +365,12 @@ class AdService extends GetxController {
       return;
     }
 
+    // Check if user has premium subscription
+    if (_isPremiumUser()) {
+      print('⭐ User is premium - skipping interstitial ad');
+      return;
+    }
+
     InterstitialAd.load(
       adUnitId: _interstitialAdUnitId,
       request: const AdRequest(),
@@ -393,6 +412,13 @@ class AdService extends GetxController {
     // Don't show ads if disabled for store submission
     if (_disableAdsForStore) {
       onAdClosed?.call(); // Still call the callback
+      return;
+    }
+
+    // Check if user has premium subscription
+    if (_isPremiumUser()) {
+      print('⭐ User is premium - skipping interstitial ad');
+      onAdClosed?.call();
       return;
     }
 
@@ -914,6 +940,17 @@ class AdService extends GetxController {
     isRewardedAdLoaded.value = false;
 
     print('✅ AdService disposed - all ads cleaned up');
+  }
+
+  // Helper method to check if user is premium
+  bool _isPremiumUser() {
+    try {
+      final subscriptionService = Get.find<SubscriptionService>();
+      return subscriptionService.isPremium;
+    } catch (e) {
+      // Subscription service not initialized or not found
+      return false;
+    }
   }
 
   @override

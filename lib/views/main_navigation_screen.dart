@@ -105,7 +105,7 @@ class MainNavigationScreen extends StatelessWidget {
 }
 
 class NavigationController extends GetxController {
-  var selectedIndex = 1.obs; // Default to Prayer Times (index 1)
+  var selectedIndex = 0.obs; // Default to Qibla (index 0)
 
   final List<Widget> screens = [
     const BeautifulQiblaScreen(),

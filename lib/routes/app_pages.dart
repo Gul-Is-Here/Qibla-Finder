@@ -22,6 +22,9 @@ import '../views/Quran_views/quran_reader_screen.dart';
 import '../views/settings_views/settings_screen.dart';
 import '../views/settings_views/notification_settings_screen.dart';
 import '../views/splash_screen.dart';
+import '../views/auth/sign_in_screen.dart';
+import '../views/auth/sign_up_screen.dart';
+import '../views/subscription/subscription_screen.dart';
 
 abstract class Routes {
   static const SPLASH = '/splash';
@@ -49,6 +52,11 @@ abstract class Routes {
   static const RAMADAN = '/ramadan';
   static const ZAKAT_CALCULATOR = '/zakat-calculator';
   static const NOTIFICATION_TEST = '/notification-test';
+  // Auth routes
+  static const SIGN_IN = '/sign-in';
+  static const SIGN_UP = '/sign-up';
+  // Subscription
+  static const SUBSCRIPTION = '/subscription';
 }
 
 class AppPages {
@@ -126,5 +134,10 @@ class AppPages {
       middlewares: [AdTrackingMiddleware()],
     ),
     GetPage(name: Routes.NOTIFICATION_TEST, page: () => const NotificationTestScreen()),
+    // Auth routes
+    GetPage(name: Routes.SIGN_IN, page: () => const SignInScreen()),
+    GetPage(name: Routes.SIGN_UP, page: () => const SignUpScreen()),
+    // Subscription
+    GetPage(name: Routes.SUBSCRIPTION, page: () => const SubscriptionScreen()),
   ];
 }

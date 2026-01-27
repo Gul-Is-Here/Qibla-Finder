@@ -136,8 +136,7 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
                 // const SizedBox(height: 16),
 
                 // Banner Ad
-                const OptimizedBannerAdWidget(padding: EdgeInsets.symmetric(horizontal: 20)),
-
+                // const OptimizedBannerAdWidget(padding: EdgeInsets.symmetric(horizontal: 20)),
                 const SizedBox(height: 16),
 
                 // Stats Row
@@ -311,7 +310,7 @@ class _BeautifulQiblaScreenState extends State<BeautifulQiblaScreen> with Ticker
             () => Text(
               valueBuilder(),
               style: GoogleFonts.poppins(
-                fontSize: 16,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: darkPurple,
               ),

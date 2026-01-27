@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'bindings/qibla_binding.dart';
 import 'core/config/app_config.dart';
@@ -11,6 +12,8 @@ import 'core/utils/logger.dart';
 import 'routes/app_pages.dart';
 import 'services/notifications/notification_service.dart';
 import 'services/ads/inmobi_ad_service.dart';
+import 'services/auth/auth_service.dart';
+import 'services/subscription_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +37,18 @@ void main() async {
   // FAST STARTUP: Initialize only essential services synchronously
   // Other services will be initialized lazily
   try {
+    // Initialize Firebase (critical for auth)
+    await Firebase.initializeApp().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        Logger.warning('Firebase init timeout', tag: 'MAIN');
+        throw Exception('Firebase initialization timeout');
+      },
+    );
+
+    // Initialize AuthService (depends on Firebase)
+    Get.put(AuthService(), permanent: true);
+
     // Initialize GetStorage with short timeout (critical for app)
     await GetStorage.init().timeout(
       const Duration(seconds: 2),
@@ -43,7 +58,7 @@ void main() async {
       },
     );
   } catch (e) {
-    Logger.error('GetStorage init failed', tag: 'MAIN', error: e);
+    Logger.error('Critical initialization failed', tag: 'MAIN', error: e);
   }
 
   // Run app immediately - don't block on other initializations
@@ -79,6 +94,11 @@ Future<void> _initializeServicesInBackground() async {
     // Initialize InMobi Ad Service lazily
     if (!Get.isRegistered<InMobiAdService>()) {
       Get.put(InMobiAdService(), permanent: true);
+    }
+
+    // Initialize Subscription Service
+    if (!Get.isRegistered<SubscriptionService>()) {
+      Get.put(SubscriptionService(), permanent: true);
     }
 
     Logger.info('Background services initialized', tag: 'MAIN');

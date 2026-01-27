@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get_storage/get_storage.dart';
 import '../routes/app_pages.dart';
+import '../services/auth/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,36 +23,44 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _initializeApp() async {
     try {
       // FAST: Reduced delay for quick startup
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(seconds: 2));
 
       // Check navigation target immediately
       if (mounted) {
         final storage = GetStorage();
-        final onboardingCompleted = storage.read('onboarding_completed') ?? false;
-        final locationPermissionGranted = storage.read('location_permission_granted') ?? false;
+        final authService = Get.find<AuthService>();
+
+        final hasCompletedOnboarding = storage.read('hasCompletedOnboarding') ?? false;
+        final isAuthenticated = authService.currentUser.value != null;
+        final isGuest = authService.isGuest.value;
 
         // Debug: Print flag values
         print('🚀 Splash Screen - Quick check:');
-        print('   onboarding_completed: $onboardingCompleted');
-        print('   location_permission_granted: $locationPermissionGranted');
+        print('   hasCompletedOnboarding: $hasCompletedOnboarding');
+        print('   isAuthenticated: $isAuthenticated');
+        print('   isGuest: $isGuest');
 
-        // Navigate immediately based on flags
-        if (onboardingCompleted && locationPermissionGranted) {
-          print('✅ Going to Main Screen');
-          Get.offNamed(Routes.MAIN);
-        } else {
-          if (onboardingCompleted && !locationPermissionGranted) {
-            print('⚠️ Resetting onboarding flag');
-            storage.write('onboarding_completed', false);
+        // Navigate based on auth and onboarding status
+        if (hasCompletedOnboarding) {
+          // If onboarding is completed, check auth status
+          if (isAuthenticated || isGuest) {
+            print('✅ Going to Main Screen (authenticated or guest)');
+            Get.offNamed(Routes.MAIN);
+          } else {
+            print('🔐 Going to Sign In Screen');
+            Get.offNamed(Routes.SIGN_IN);
           }
-          print('📱 Showing Spiritual Goal Screen (First Onboarding)');
+        } else {
+          // First time user - show onboarding
+          print('📱 Showing Spiritual Goal Screen (First Time)');
           Get.offNamed(Routes.SPIRITUAL_GOAL);
         }
       }
     } catch (e) {
       print('Splash error: $e');
       if (mounted) {
-        Get.offNamed(Routes.SPIRITUAL_GOAL);
+        // On error, go to sign in
+        Get.offNamed(Routes.SIGN_IN);
       }
     }
   }

@@ -3,6 +3,9 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../controllers/compass_controller/qibla_controller.dart';
 import '../../services/ads/ad_service.dart';
+import '../../services/auth/auth_service.dart';
+import '../../services/subscription_service.dart';
+import '../../routes/app_pages.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -17,6 +20,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final QiblaController controller = Get.find<QiblaController>();
     final AdService adService = Get.find<AdService>();
+    final AuthService authService = Get.find<AuthService>();
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -147,6 +151,50 @@ class SettingsScreen extends StatelessWidget {
                       return _buildAdsInfoCard(remaining);
                     },
                   ),
+
+                  const SizedBox(height: 24),
+
+                  // Section: Premium
+                  _buildSectionHeader('Premium', Icons.workspace_premium_rounded),
+                  const SizedBox(height: 8),
+                  _buildPremiumCard(),
+
+                  const SizedBox(height: 24),
+
+                  // Section: Account
+                  _buildSectionHeader('Account', Icons.person_rounded),
+                  const SizedBox(height: 8),
+                  _buildSettingsCard([
+                    Obx(() {
+                      final user = authService.currentUser.value;
+                      return _buildInfoTile(
+                        icon: Icons.email_rounded,
+                        title: user?.email ?? 'Guest',
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: primaryPurple.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            user != null ? 'Signed In' : 'Guest',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: primaryPurple,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    _buildDivider(),
+                    _buildNavigationTile(
+                      icon: Icons.logout_rounded,
+                      title: 'Logout',
+                      subtitle: 'Sign out from your account',
+                      onTap: () => _showLogoutDialog(context, authService),
+                    ),
+                  ]),
 
                   const SizedBox(height: 24),
 
@@ -435,6 +483,205 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumCard() {
+    // Check if subscription service is registered
+    if (!Get.isRegistered<SubscriptionService>()) {
+      return _buildPremiumCardUI(false);
+    }
+
+    final subscriptionService = Get.find<SubscriptionService>();
+
+    return Obx(() {
+      final isPremium = subscriptionService.isPremium;
+      return _buildPremiumCardUI(isPremium);
+    });
+  }
+
+  Widget _buildPremiumCardUI(bool isPremium) {
+    return InkWell(
+      onTap: isPremium ? null : () => Get.toNamed(Routes.SUBSCRIPTION),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isPremium ? [goldAccent, const Color(0xFFFFD700)] : [primaryPurple, darkPurple],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: (isPremium ? goldAccent : primaryPurple).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                isPremium ? Icons.workspace_premium_rounded : Icons.star_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isPremium ? '⭐ Premium Active' : 'Go Premium',
+                    style: GoogleFonts.poppins(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isPremium ? 'Enjoy ad-free experience' : 'Remove ads from Rs. 50/month',
+                    style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withOpacity(0.9)),
+                  ),
+                ],
+              ),
+            ),
+            if (!isPremium)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Upgrade',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: primaryPurple,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, AuthService authService) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: primaryPurple.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded, size: 40, color: primaryPurple),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Logout',
+                style: GoogleFonts.poppins(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey[850],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Are you sure you want to sign out from your account?',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: Colors.grey[300]!),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Get.back(); // Close dialog
+                        try {
+                          await authService.signOut();
+                          Get.offAllNamed('/login'); // Navigate to login screen
+                          Get.snackbar(
+                            '👋 Goodbye!',
+                            'You have been signed out successfully',
+                            backgroundColor: primaryPurple,
+                            colorText: Colors.white,
+                            snackPosition: SnackPosition.BOTTOM,
+                            margin: const EdgeInsets.all(16),
+                            borderRadius: 12,
+                          );
+                        } catch (e) {
+                          Get.snackbar(
+                            '❌ Error',
+                            'Failed to sign out. Please try again.',
+                            backgroundColor: Colors.red[400],
+                            colorText: Colors.white,
+                            snackPosition: SnackPosition.BOTTOM,
+                            margin: const EdgeInsets.all(16),
+                            borderRadius: 12,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: primaryPurple,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Logout',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
