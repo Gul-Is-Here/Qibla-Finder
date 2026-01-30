@@ -93,12 +93,10 @@ class InMobiAdService extends GetxController {
   /// Initialize InMobi SDK
   Future<void> _initializeInMobi() async {
     if (_disableInMobiAds) {
-      print('📵 InMobi ads disabled');
       return;
     }
 
     if (!Platform.isAndroid) {
-      print('⚠️ InMobi currently only configured for Android');
       return;
     }
 
@@ -107,17 +105,14 @@ class InMobiAdService extends GetxController {
 
       if (result == true) {
         isInitialized.value = true;
-        print('✅ InMobi SDK initialized successfully');
 
         // Preload interstitial ad
         await _loadInterstitialAd();
-      } else {
-        print('❌ InMobi SDK initialization failed');
       }
-    } on PlatformException catch (e) {
-      print('❌ InMobi initialization error: ${e.message}');
-    } catch (e) {
-      print('❌ InMobi initialization error: $e');
+    } on PlatformException catch (_) {
+      // Initialization failed silently
+    } catch (_) {
+      // Initialization failed silently
     }
   }
 
@@ -127,12 +122,10 @@ class InMobiAdService extends GetxController {
       switch (call.method) {
         case 'onInterstitialLoaded':
           isInterstitialLoaded.value = true;
-          print('✅ InMobi Interstitial loaded');
           break;
 
         case 'onInterstitialLoadFailed':
           isInterstitialLoaded.value = false;
-          print('❌ InMobi Interstitial load failed: ${call.arguments}');
           // Retry after delay
           Future.delayed(const Duration(seconds: 60), _loadInterstitialAd);
           break;
@@ -140,44 +133,36 @@ class InMobiAdService extends GetxController {
         case 'onInterstitialShown':
           _isInterstitialShowing = true;
           _incrementDailyAdCount();
-          print('📺 InMobi Interstitial shown');
           break;
 
         case 'onInterstitialClicked':
-          print('👆 InMobi Interstitial clicked');
           break;
 
         case 'onInterstitialDismissed':
           _isInterstitialShowing = false;
           isInterstitialLoaded.value = false;
           _lastInterstitialShowTime = DateTime.now();
-          print('✅ InMobi Interstitial dismissed');
           // Preload next ad
           Future.delayed(const Duration(seconds: 5), _loadInterstitialAd);
           break;
 
         case 'onBannerLoaded':
           isBannerLoaded.value = true;
-          print('✅ InMobi Banner loaded');
           break;
 
         case 'onBannerLoadFailed':
           isBannerLoaded.value = false;
-          print('❌ InMobi Banner load failed: ${call.arguments}');
           break;
 
         case 'onRewardedLoaded':
           isRewardedLoaded.value = true;
-          print('✅ InMobi Rewarded loaded');
           break;
 
         case 'onRewardedLoadFailed':
           isRewardedLoaded.value = false;
-          print('❌ InMobi Rewarded load failed: ${call.arguments}');
           break;
 
         case 'onRewardedCompleted':
-          print('🎁 InMobi Rewarded completed - User earned reward');
           break;
       }
     });
@@ -193,9 +178,8 @@ class InMobiAdService extends GetxController {
 
     try {
       await _channel.invokeMethod('loadInterstitial', {'placementId': interstitialPlacementId});
-      print('📥 Loading InMobi Interstitial...');
-    } on PlatformException catch (e) {
-      print('❌ Error loading InMobi Interstitial: ${e.message}');
+    } on PlatformException catch (_) {
+      // Load failed silently
     }
   }
 
@@ -209,14 +193,12 @@ class InMobiAdService extends GetxController {
 
     // Check daily limit
     if (!_canShowAd()) {
-      print('⚠️ InMobi daily ad limit reached');
       onAdClosed?.call();
       return false;
     }
 
     // Check if already showing
     if (_isInterstitialShowing) {
-      print('⚠️ InMobi Interstitial already showing');
       onAdClosed?.call();
       return false;
     }
@@ -224,16 +206,12 @@ class InMobiAdService extends GetxController {
     // Check minimum interval (2 minutes between ads)
     final timeSinceLastAd = DateTime.now().difference(_lastInterstitialShowTime);
     if (timeSinceLastAd.inMinutes < 2) {
-      print(
-        '⚠️ Too soon to show InMobi Interstitial (${timeSinceLastAd.inSeconds}s since last ad)',
-      );
       onAdClosed?.call();
       return false;
     }
 
     // Check if loaded
     if (!isInterstitialLoaded.value) {
-      print('⚠️ InMobi Interstitial not loaded');
       _loadInterstitialAd(); // Try to load
       onAdClosed?.call();
       return false;
@@ -243,8 +221,6 @@ class InMobiAdService extends GetxController {
       final result = await _channel.invokeMethod('showInterstitial');
 
       if (result == true) {
-        print('📺 Showing InMobi Interstitial...');
-
         // Wait for dismissal callback, then call onAdClosed
         Future.delayed(const Duration(seconds: 30), () {
           if (!_isInterstitialShowing) {
@@ -254,12 +230,10 @@ class InMobiAdService extends GetxController {
 
         return true;
       } else {
-        print('❌ Failed to show InMobi Interstitial');
         onAdClosed?.call();
         return false;
       }
-    } on PlatformException catch (e) {
-      print('❌ Error showing InMobi Interstitial: ${e.message}');
+    } on PlatformException catch (_) {
       onAdClosed?.call();
       return false;
     }

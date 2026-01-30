@@ -22,7 +22,6 @@ class _SignInScreenState extends State<SignInScreen> {
   // App theme colors
   static const Color primaryPurple = Color(0xFF8F66FF);
   static const Color darkPurple = Color(0xFF2D1B69);
-  static const Color goldAccent = Color(0xFFD4AF37);
 
   @override
   void dispose() {
@@ -34,52 +33,47 @@ class _SignInScreenState extends State<SignInScreen> {
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
-    print('📝 Attempting sign in with email: ${_emailController.text}');
     final error = await _authService.signInWithEmail(
       email: _emailController.text,
       password: _passwordController.text,
     );
 
     if (error != null) {
-      print('❌ Sign In Failed: $error');
-      print('📧 Email: ${_emailController.text}');
       Get.snackbar(
         'Sign In Failed',
         error,
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[400],
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
       );
     } else {
-      print('✅ Sign In Successful!');
-      Get.offAllNamed(Routes.HOME);
+      Get.offAllNamed(Routes.MAIN);
     }
   }
 
   Future<void> _signInWithGoogle() async {
-    print('🔷 Attempting Google sign in...');
     final error = await _authService.signInWithGoogle();
 
     if (error != null) {
-      print('❌ Google Sign In Failed: $error');
       Get.snackbar(
-        'Google Sign In Failed',
+        'Sign In Failed',
         error,
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[400],
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
       );
     } else {
-      print('✅ Google Sign In Successful!');
-      Get.offAllNamed(Routes.HOME);
+      Get.offAllNamed(Routes.MAIN);
     }
   }
 
   Future<void> _continueAsGuest() async {
-    print('👤 Continuing as guest...');
     await _authService.continueAsGuest();
-    print('✅ Guest mode activated!');
-    Get.offAllNamed(Routes.HOME);
+    Get.offAllNamed(Routes.MAIN);
   }
 
   @override

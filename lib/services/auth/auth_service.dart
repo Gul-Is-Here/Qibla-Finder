@@ -33,7 +33,6 @@ class AuthService extends GetxService {
   }) async {
     try {
       isLoading.value = true;
-      print('🔥 Creating Firebase Auth user...');
 
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
@@ -47,14 +46,12 @@ class AuthService extends GetxService {
 
       // Create user document in Firestore
       if (userCredential.user != null) {
-        print('📝 Creating user document in Firestore...');
         await _createUserDocument(
           uid: userCredential.user!.uid,
           email: email.trim(),
           name: name,
           authProvider: 'email',
         );
-        print('✅ User document created successfully!');
       }
 
       _storage.write('isGuest', false);
@@ -62,10 +59,8 @@ class AuthService extends GetxService {
 
       return null; // Success
     } on FirebaseAuthException catch (e) {
-      print('❌ FirebaseAuthException: ${e.code} - ${e.message}');
       return _getErrorMessage(e);
     } catch (e) {
-      print('❌ Unexpected error during sign up: $e');
       return 'An error occurred. Please try again.';
     } finally {
       isLoading.value = false;
@@ -76,7 +71,6 @@ class AuthService extends GetxService {
   Future<String?> signInWithEmail({required String email, required String password}) async {
     try {
       isLoading.value = true;
-      print('🔥 Signing in with email...');
 
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
@@ -85,9 +79,7 @@ class AuthService extends GetxService {
 
       // Update last login time in Firestore
       if (userCredential.user != null) {
-        print('📝 Updating last login time...');
         await _updateLastLogin(userCredential.user!.uid);
-        print('✅ Last login updated!');
       }
 
       _storage.write('isGuest', false);
@@ -95,10 +87,8 @@ class AuthService extends GetxService {
 
       return null; // Success
     } on FirebaseAuthException catch (e) {
-      print('❌ FirebaseAuthException: ${e.code} - ${e.message}');
       return _getErrorMessage(e);
     } catch (e) {
-      print('❌ Unexpected error during sign in: $e');
       return 'An error occurred. Please try again.';
     } finally {
       isLoading.value = false;
@@ -109,13 +99,6 @@ class AuthService extends GetxService {
   Future<String?> signInWithGoogle() async {
     try {
       isLoading.value = true;
-
-      // iOS Check: Verify configuration
-      if (Platform.isIOS) {
-        // Check if GoogleService-Info.plist is configured
-        // This will throw an error if not configured, which we catch below
-        print('🍎 iOS: Attempting Google Sign-In...');
-      }
 
       // Trigger Google Sign In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -137,9 +120,7 @@ class AuthService extends GetxService {
 
       // Create or update user document in Firestore
       if (userCredential.user != null) {
-        print('📝 Creating/updating user document in Firestore...');
         await _createOrUpdateGoogleUser(userCredential.user!);
-        print('✅ User document saved!');
       }
 
       _storage.write('isGuest', false);
@@ -151,9 +132,9 @@ class AuthService extends GetxService {
     } catch (e) {
       // Specific handling for iOS configuration error
       if (Platform.isIOS && e.toString().contains('presentingViewController')) {
-        return 'Google Sign-In not configured for iOS.\n\nPlease follow setup instructions in URGENT_IOS_SETUP.md';
+        return 'Google Sign-In is not available on this device.';
       }
-      return 'An error occurred: ${e.toString()}';
+      return 'An error occurred. Please try again.';
     } finally {
       isLoading.value = false;
     }
@@ -167,14 +148,17 @@ class AuthService extends GetxService {
   }
 
   // Sign Out
-  Future<void> signOut() async {
+  Future<String?> signOut() async {
     try {
       await _auth.signOut();
       await _googleSignIn.signOut();
       _storage.write('isGuest', false);
+      _storage.write('hasCompletedOnboarding', false);
       isGuest.value = false;
+      currentUser.value = null;
+      return null; // Success
     } catch (e) {
-      print('Error signing out: $e');
+      return 'Failed to sign out. Please try again.';
     }
   }
 
@@ -252,9 +236,7 @@ class AuthService extends GetxService {
       );
 
       await _firestore.collection('users').doc(uid).set(userModel.toMap());
-      print('✅ User document created: $uid');
     } catch (e) {
-      print('❌ Error creating user document: $e');
       // Don't throw error - auth is still successful even if Firestore fails
     }
   }
@@ -263,9 +245,7 @@ class AuthService extends GetxService {
   Future<void> _updateLastLogin(String uid) async {
     try {
       await _firestore.collection('users').doc(uid).update({'lastLoginAt': Timestamp.now()});
-      print('✅ Last login updated for: $uid');
     } catch (e) {
-      print('⚠️ Error updating last login: $e');
       // If document doesn't exist, try to get user info and create it
       final user = _auth.currentUser;
       if (user != null) {
@@ -292,7 +272,6 @@ class AuthService extends GetxService {
           'lastLoginAt': Timestamp.now(),
           'photoUrl': user.photoURL, // Update photo in case it changed
         });
-        print('✅ Google user updated: ${user.uid}');
       } else {
         // New user, create document
         await _createUserDocument(
@@ -302,10 +281,9 @@ class AuthService extends GetxService {
           photoUrl: user.photoURL,
           authProvider: 'google',
         );
-        print('✅ New Google user created: ${user.uid}');
       }
     } catch (e) {
-      print('❌ Error creating/updating Google user: $e');
+      // Silent fail - auth is still successful
     }
   }
 
@@ -318,7 +296,6 @@ class AuthService extends GetxService {
       }
       return null;
     } catch (e) {
-      print('❌ Error getting user data: $e');
       return null;
     }
   }
@@ -331,15 +308,5 @@ class AuthService extends GetxService {
       }
       return null;
     });
-  }
-
-  /// Delete user document from Firestore (when account is deleted)
-  Future<void> _deleteUserDocument(String uid) async {
-    try {
-      await _firestore.collection('users').doc(uid).delete();
-      print('✅ User document deleted: $uid');
-    } catch (e) {
-      print('❌ Error deleting user document: $e');
-    }
   }
 }

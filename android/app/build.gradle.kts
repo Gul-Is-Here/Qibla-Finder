@@ -64,12 +64,44 @@ android {
     }
 }
 
-// InMobi SDK dependency
+// InMobi SDK and ALL Required Dependencies (as per InMobi Documentation)
 dependencies {
-    implementation("com.inmobi.monetization:inmobi-ads-kotlin:10.7.7")
-    implementation("com.squareup.picasso:picasso:2.71828")
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    // InMobi SDK - Latest Kotlin version
+    implementation("com.inmobi.monetization:inmobi-ads-kotlin:11.1.1")
+    
+    // ExoPlayer - Required for video ads
+    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    
+    // OkHttp - Required for HTTP/2 network communication
+    implementation("com.squareup.okhttp3:okhttp:3.14.9")
+    implementation("com.squareup.okio:okio:3.7.0")
+    
+    // Kotlin Coroutines - Required for async operations
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
+    
+    // Kotlin Dependencies - Required for Native Ads module
+    implementation("androidx.core:core-ktx:1.5.0")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.21")
+    
+    // Google Play Services - Required for ad targeting
+    implementation("com.google.android.gms:play-services-ads-identifier:18.0.1")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    
+    // Chrome Custom Tab - CRITICAL: Required for URL redirects (ads will fail without this!)
+    implementation("androidx.browser:browser:1.8.0")
+    
+    // Picasso - CRITICAL: Required for loading ad assets (interstitial will fail without this!)
+    implementation("com.squareup.picasso:picasso:2.8")
+    
+    // AppSet ID - For better targeting
+    implementation("com.google.android.gms:play-services-appset:16.0.2")
+    implementation("com.google.android.gms:play-services-tasks:18.0.2")
+    
+    // Multidex support
     implementation("androidx.multidex:multidex:2.0.1")
+    
+    // RecyclerView (for native ads)
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 }
 
 flutter {

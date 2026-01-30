@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../../services/ads/ad_service.dart';
-import '../../services/subscription_service.dart';
-import 'subscription_prompt_banner.dart';
+// TODO: Uncomment for premium features in next version
+// import '../../services/subscription_service.dart';
+// import 'subscription_prompt_banner.dart';
 
 class OptimizedBannerAdWidget extends StatefulWidget {
   final EdgeInsets? padding;
   final bool showOnlyWhenLoaded;
-  final bool isBottomBanner; // New parameter to specify which banner to use
+  final bool isBottomBanner;
 
   const OptimizedBannerAdWidget({
     super.key,
     this.padding,
     this.showOnlyWhenLoaded = true,
-    this.isBottomBanner = false, // Default to top banner
+    this.isBottomBanner = false,
   });
 
   @override
@@ -55,29 +56,29 @@ class _OptimizedBannerAdWidgetState extends State<OptimizedBannerAdWidget> {
   Widget build(BuildContext context) {
     // Don't show ads if disabled for store submission
     if (AdService.areAdsDisabled) {
-      return const SubscriptionPromptBanner();
+      return const SizedBox.shrink();
     }
 
-    // Check if user is premium (safe check - service might not be initialized yet)
-    try {
-      if (Get.isRegistered<SubscriptionService>()) {
-        final subscriptionService = Get.find<SubscriptionService>();
-        if (subscriptionService.isPremium) {
-          return const SizedBox.shrink();
-        }
-      }
-    } catch (e) {
-      // Subscription service not ready yet, continue to show ads/prompts
-    }
+    // TODO: Uncomment for premium features in next version
+    // Check if user is premium
+    // try {
+    //   if (Get.isRegistered<SubscriptionService>()) {
+    //     final subscriptionService = Get.find<SubscriptionService>();
+    //     if (subscriptionService.isPremium) {
+    //       return const SizedBox.shrink();
+    //     }
+    //   }
+    // } catch (e) {
+    //   // Subscription service not ready yet
+    // }
 
-    // Use local banner ad instead of shared service ads
+    // Use local banner ad
     if (_localBannerAd == null && widget.showOnlyWhenLoaded) {
-      return const SubscriptionPromptBanner();
+      return const SizedBox.shrink();
     }
 
-    // Additional safety check to ensure ad is loaded
     if (_localBannerAd == null) {
-      return const SubscriptionPromptBanner();
+      return const SizedBox.shrink();
     }
 
     return Container(

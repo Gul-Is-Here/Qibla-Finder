@@ -15,11 +15,13 @@
 -keep class com.google.ads.** { *; }
 -dontwarn com.google.android.gms.**
 
-# InMobi SDK ProGuard Rules
+# ══════════════════════════════════════════════════════════════════════════════
+# InMobi SDK ProGuard Rules (as per official documentation)
+# ══════════════════════════════════════════════════════════════════════════════
 -keepattributes SourceFile,LineNumberTable
 -keep class com.inmobi.** { *; }
 -keep public class com.google.android.gms.**
--dontwarn com.inmobi.**
+-dontwarn com.google.android.gms.**
 -dontwarn com.squareup.picasso.**
 -keep class com.google.android.gms.ads.identifier.AdvertisingIdClient{
      public *;
@@ -28,7 +30,24 @@
      public *;
 }
 
+# skip the Picasso library classes
+-keep class com.squareup.picasso.** {*;}
+-dontwarn com.squareup.okhttp.**
+
+# skip Moat classes
+-keep class com.moat.** {*;}
+-dontwarn com.moat.**
+
+# skip IAB classes
+-keep class com.iab.** {*;}
+-dontwarn com.iab.**
+
+# skip Kotlin property metadata
+-keep class kotlin.Metadata { *; }
+
+# ══════════════════════════════════════════════════════════════════════════════
 # OkHttp (required by InMobi)
+# ══════════════════════════════════════════════════════════════════════════════
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn javax.annotation.**
@@ -39,10 +58,9 @@
 -dontwarn org.conscrypt.Conscrypt
 -dontwarn org.conscrypt.OpenSSLProvider
 
+# ══════════════════════════════════════════════════════════════════════════════
 # Picasso (required by InMobi for images)
--dontwarn com.squareup.okhttp.**
-
-# Keep Picasso classes
+# ══════════════════════════════════════════════════════════════════════════════
 -keep class com.squareup.picasso.** { *; }
 -keepclasseswithmembers class * {
     @com.squareup.picasso.* <fields>;
@@ -51,7 +69,9 @@
     @com.squareup.picasso.* <methods>;
 }
 
+# ══════════════════════════════════════════════════════════════════════════════
 # Keep native methods
+# ══════════════════════════════════════════════════════════════════════════════
 -keepclasseswithmembernames class * {
     native <methods>;
 }

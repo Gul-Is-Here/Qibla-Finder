@@ -13,7 +13,8 @@ import 'routes/app_pages.dart';
 import 'services/notifications/notification_service.dart';
 import 'services/ads/inmobi_ad_service.dart';
 import 'services/auth/auth_service.dart';
-import 'services/subscription_service.dart';
+// TODO: Uncomment for premium features in next version
+// import 'services/subscription_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,14 +35,12 @@ void main() async {
     return true;
   };
 
-  // FAST STARTUP: Initialize only essential services synchronously
-  // Other services will be initialized lazily
+  // Initialize essential services
   try {
     // Initialize Firebase (critical for auth)
     await Firebase.initializeApp().timeout(
       const Duration(seconds: 5),
       onTimeout: () {
-        Logger.warning('Firebase init timeout', tag: 'MAIN');
         throw Exception('Firebase initialization timeout');
       },
     );
@@ -49,11 +48,10 @@ void main() async {
     // Initialize AuthService (depends on Firebase)
     Get.put(AuthService(), permanent: true);
 
-    // Initialize GetStorage with short timeout (critical for app)
+    // Initialize GetStorage (critical for app preferences)
     await GetStorage.init().timeout(
       const Duration(seconds: 2),
       onTimeout: () {
-        Logger.warning('GetStorage init timeout - using defaults', tag: 'MAIN');
         return false;
       },
     );
@@ -74,11 +72,10 @@ Future<void> _initializeServicesInBackground() async {
     // Small delay to let UI render first
     await Future.delayed(const Duration(milliseconds: 100));
 
-    // Initialize ads SDK (can be slow)
+    // Initialize ads SDK
     MobileAds.instance.initialize().timeout(
       const Duration(seconds: 5),
       onTimeout: () {
-        Logger.warning('Ads SDK init timeout', tag: 'MAIN');
         return InitializationStatus({});
       },
     );
@@ -86,22 +83,19 @@ Future<void> _initializeServicesInBackground() async {
     // Initialize notification service
     await NotificationService.instance.initialize().timeout(
       const Duration(seconds: 3),
-      onTimeout: () {
-        Logger.warning('Notification init timeout', tag: 'MAIN');
-      },
+      onTimeout: () {},
     );
 
-    // Initialize InMobi Ad Service lazily
+    // Initialize InMobi Ad Service
     if (!Get.isRegistered<InMobiAdService>()) {
       Get.put(InMobiAdService(), permanent: true);
     }
 
+    // TODO: Uncomment for premium features in next version
     // Initialize Subscription Service
-    if (!Get.isRegistered<SubscriptionService>()) {
-      Get.put(SubscriptionService(), permanent: true);
-    }
-
-    Logger.info('Background services initialized', tag: 'MAIN');
+    // if (!Get.isRegistered<SubscriptionService>()) {
+    //   Get.put(SubscriptionService(), permanent: true);
+    // }
   } catch (e, stackTrace) {
     Logger.error('Background initialization error', tag: 'MAIN', error: e, stackTrace: stackTrace);
   }

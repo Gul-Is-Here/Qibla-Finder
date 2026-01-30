@@ -4,7 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../controllers/compass_controller/qibla_controller.dart';
 import '../../services/ads/ad_service.dart';
 import '../../services/auth/auth_service.dart';
-import '../../services/subscription_service.dart';
+// TODO: Uncomment for premium features in next version
+// import '../../services/subscription_service.dart';
 import '../../routes/app_pages.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -154,12 +155,12 @@ class SettingsScreen extends StatelessWidget {
 
                   const SizedBox(height: 24),
 
+                  // TODO: Premium section - Uncomment in next version
                   // Section: Premium
-                  _buildSectionHeader('Premium', Icons.workspace_premium_rounded),
-                  const SizedBox(height: 8),
-                  _buildPremiumCard(),
-
-                  const SizedBox(height: 24),
+                  // _buildSectionHeader('Premium', Icons.workspace_premium_rounded),
+                  // const SizedBox(height: 8),
+                  // _buildPremiumCard(),
+                  // const SizedBox(height: 24),
 
                   // Section: Account
                   _buildSectionHeader('Account', Icons.person_rounded),
@@ -167,9 +168,23 @@ class SettingsScreen extends StatelessWidget {
                   _buildSettingsCard([
                     Obx(() {
                       final user = authService.currentUser.value;
+                      final isGuest = authService.isGuest.value;
+
+                      // Show guest tile when user is guest OR there is no authenticated user
+                      if (isGuest || user == null) {
+                        return _buildNavigationTile(
+                          icon: Icons.person_outline_rounded,
+                          title: 'Guest User',
+                          subtitle: 'Tap to sign in and unlock all features',
+                          // Use push to Sign In so user can return; replace-all wasn't necessary here
+                          onTap: () => Get.toNamed(Routes.SIGN_IN),
+                        );
+                      }
+
+                      // If logged in, show email with badge
                       return _buildInfoTile(
                         icon: Icons.email_rounded,
-                        title: user?.email ?? 'Guest',
+                        title: user.email ?? 'User',
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
@@ -177,7 +192,7 @@ class SettingsScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            user != null ? 'Signed In' : 'Guest',
+                            'Signed In',
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -220,15 +235,8 @@ class SettingsScreen extends StatelessWidget {
                       title: 'Rate App',
                       subtitle: 'Love the app? Rate us!',
                       onTap: () {
-                        Get.snackbar(
-                          '⭐ Thank You!',
-                          'Your support means a lot to us',
-                          backgroundColor: primaryPurple,
-                          colorText: Colors.white,
-                          snackPosition: SnackPosition.BOTTOM,
-                          margin: const EdgeInsets.all(16),
-                          borderRadius: 12,
-                        );
+                        // TODO: Add actual Play Store rating link
+                        // launchUrl(Uri.parse('https://play.google.com/store/apps/details?id=com.qibla_compass_offline.app'));
                       },
                     ),
                   ]),
@@ -487,6 +495,8 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  // TODO: Premium features - Uncomment in next version
+  /*
   Widget _buildPremiumCard() {
     // Check if subscription service is registered
     if (!Get.isRegistered<SubscriptionService>()) {
@@ -578,6 +588,7 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
+  */
 
   void _showLogoutDialog(BuildContext context, AuthService authService) {
     Get.dialog(
@@ -637,22 +648,17 @@ class SettingsScreen extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () async {
                         Get.back(); // Close dialog
-                        try {
-                          await authService.signOut();
-                          Get.offAllNamed('/login'); // Navigate to login screen
+
+                        final error = await authService.signOut();
+
+                        if (error == null) {
+                          // Success - navigate to sign in
+                          Get.offAllNamed(Routes.SIGN_IN);
+                        } else {
+                          // Error - show error message
                           Get.snackbar(
-                            '👋 Goodbye!',
-                            'You have been signed out successfully',
-                            backgroundColor: primaryPurple,
-                            colorText: Colors.white,
-                            snackPosition: SnackPosition.BOTTOM,
-                            margin: const EdgeInsets.all(16),
-                            borderRadius: 12,
-                          );
-                        } catch (e) {
-                          Get.snackbar(
-                            '❌ Error',
-                            'Failed to sign out. Please try again.',
+                            'Logout Failed',
+                            error,
                             backgroundColor: Colors.red[400],
                             colorText: Colors.white,
                             snackPosition: SnackPosition.BOTTOM,

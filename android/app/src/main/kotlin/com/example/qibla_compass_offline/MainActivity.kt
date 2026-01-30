@@ -54,6 +54,9 @@ class MainActivity : AudioServiceFragmentActivity() {
                         result.success(false)
                     }
                 }
+                "isInterstitialReady" -> {
+                    result.success(isInterstitialReady && interstitialAd?.isReady() == true)
+                }
                 "dispose" -> {
                     interstitialAd = null
                     isInterstitialReady = false
@@ -69,37 +72,48 @@ class MainActivity : AudioServiceFragmentActivity() {
             // Enable debug/log mode for development (disable in production)
             InMobiSdk.setLogLevel(InMobiSdk.LogLevel.DEBUG)
             
+            // Consent object for GDPR compliance
+            // TCF and GPP strings are auto-detected from SDK 10.7.5+
             val consentObject = JSONObject()
-            // Set GDPR consent - adjust as needed for your app
-            // consentObject.put(InMobiSdk.IM_GDPR_CONSENT_AVAILABLE, true)
             
-            InMobiSdk.init(this, accountId, consentObject, object : SdkInitializationListener {
-                override fun onInitializationComplete(error: Error?) {
-                    if (error == null) {
-                        Log.d(TAG, "InMobi SDK initialized successfully")
-                        Log.d(TAG, "InMobi SDK Version: ${InMobiSdk.getVersion()}")
-                        runOnUiThread {
+            // Initialize on UI thread as required by InMobi
+            runOnUiThread {
+                InMobiSdk.init(this, accountId, consentObject, object : SdkInitializationListener {
+                    override fun onInitializationComplete(error: Error?) {
+                        if (error == null) {
+                            Log.d(TAG, "✅ InMobi SDK initialized successfully")
+                            Log.d(TAG, "📌 InMobi SDK Version: ${InMobiSdk.getVersion()}")
+                            
+                            // Log device ID for test device registration
+                            Log.d(TAG, "📱 Register this device ID in InMobi Dashboard for test ads:")
+                            Log.d(TAG, "📱 Device ID: Use 'Publisher device Id' from logs above")
+                            
                             result.success(true)
-                        }
-                    } else {
-                        Log.e(TAG, "InMobi SDK initialization failed: ${error.message}")
-                        runOnUiThread {
+                        } else {
+                            Log.e(TAG, "❌ InMobi SDK initialization failed: ${error.message}")
                             result.success(false)
                         }
                     }
-                }
-            })
+                })
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "InMobi initialization error: ${e.message}")
+            Log.e(TAG, "❌ InMobi initialization error: ${e.message}")
             result.error("INIT_ERROR", e.message, null)
         }
     }
 
     private fun loadInterstitial(placementId: Long) {
         try {
+            Log.d(TAG, "📥 Loading InMobi Interstitial with placement: $placementId")
+            
             interstitialAd = InMobiInterstitial(this, placementId, object : InterstitialAdEventListener() {
+                
+                override fun onAdFetchSuccessful(ad: InMobiInterstitial, info: AdMetaInfo) {
+                    Log.d(TAG, "📦 Interstitial ad fetched, preparing to load...")
+                }
+                
                 override fun onAdLoadSucceeded(ad: InMobiInterstitial, info: AdMetaInfo) {
-                    Log.d(TAG, "Interstitial loaded successfully")
+                    Log.d(TAG, "✅ Interstitial loaded successfully - Creative ID: ${info.creativeID}")
                     isInterstitialReady = true
                     runOnUiThread {
                         methodChannel?.invokeMethod("onInterstitialLoaded", null)
@@ -107,45 +121,67 @@ class MainActivity : AudioServiceFragmentActivity() {
                 }
 
                 override fun onAdLoadFailed(ad: InMobiInterstitial, status: InMobiAdRequestStatus) {
-                    Log.e(TAG, "Interstitial load failed: ${status.message}")
+                    Log.e(TAG, "❌ Interstitial load failed: ${status.statusCode} - ${status.message}")
                     isInterstitialReady = false
                     runOnUiThread {
-                        methodChannel?.invokeMethod("onInterstitialLoadFailed", status.message)
+                        methodChannel?.invokeMethod("onInterstitialLoadFailed", "${status.statusCode}: ${status.message}")
                     }
+                }
+                
+                override fun onAdWillDisplay(ad: InMobiInterstitial) {
+                    Log.d(TAG, "📺 Interstitial will display")
                 }
 
                 override fun onAdDisplayed(ad: InMobiInterstitial, info: AdMetaInfo) {
-                    Log.d(TAG, "Interstitial displayed")
+                    Log.d(TAG, "📺 Interstitial displayed")
                     runOnUiThread {
                         methodChannel?.invokeMethod("onInterstitialShown", null)
                     }
                 }
+                
+                override fun onAdDisplayFailed(ad: InMobiInterstitial) {
+                    Log.e(TAG, "❌ Interstitial display failed")
+                    isInterstitialReady = false
+                    runOnUiThread {
+                        methodChannel?.invokeMethod("onInterstitialDisplayFailed", null)
+                    }
+                }
 
                 override fun onAdClicked(ad: InMobiInterstitial, params: MutableMap<Any, Any>?) {
-                    Log.d(TAG, "Interstitial clicked")
+                    Log.d(TAG, "👆 Interstitial clicked")
                     runOnUiThread {
                         methodChannel?.invokeMethod("onInterstitialClicked", null)
                     }
                 }
 
                 override fun onAdDismissed(ad: InMobiInterstitial) {
-                    Log.d(TAG, "Interstitial dismissed")
+                    Log.d(TAG, "✅ Interstitial dismissed")
                     isInterstitialReady = false
                     runOnUiThread {
                         methodChannel?.invokeMethod("onInterstitialDismissed", null)
                     }
                 }
-
-                override fun onAdDisplayFailed(ad: InMobiInterstitial) {
-                    Log.e(TAG, "Interstitial display failed")
-                    isInterstitialReady = false
+                
+                override fun onUserLeftApplication(ad: InMobiInterstitial) {
+                    Log.d(TAG, "👋 User left application from interstitial")
+                }
+                
+                override fun onRewardsUnlocked(ad: InMobiInterstitial, rewards: MutableMap<Any, Any>?) {
+                    Log.d(TAG, "🎁 Rewards unlocked: $rewards")
+                    runOnUiThread {
+                        methodChannel?.invokeMethod("onRewardsUnlocked", rewards?.toString())
+                    }
+                }
+                
+                override fun onAdImpression(ad: InMobiInterstitial) {
+                    Log.d(TAG, "📊 Ad impression logged")
                 }
             })
             
             interstitialAd?.load()
-            Log.d(TAG, "Loading interstitial ad with placement: $placementId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading interstitial: ${e.message}")
+            Log.e(TAG, "❌ Error loading interstitial: ${e.message}")
+            e.printStackTrace()
         }
     }
 

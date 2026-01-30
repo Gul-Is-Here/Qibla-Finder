@@ -25,7 +25,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   // App theme colors
   static const Color primaryPurple = Color(0xFF8F66FF);
   static const Color darkPurple = Color(0xFF2D1B69);
-  static const Color goldAccent = Color(0xFFD4AF37);
 
   @override
   void dispose() {
@@ -40,18 +39,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_passwordController.text != _confirmPasswordController.text) {
-      print('❌ Sign Up Error: Passwords do not match');
       Get.snackbar(
         'Error',
         'Passwords do not match',
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[400],
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
       );
       return;
     }
 
-    print('📝 Attempting sign up with email: ${_emailController.text}');
     final error = await _authService.signUpWithEmail(
       email: _emailController.text,
       password: _passwordController.text,
@@ -59,38 +58,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
 
     if (error != null) {
-      print('❌ Sign Up Failed: $error');
-      print('📧 Email: ${_emailController.text}');
-      print('👤 Name: ${_nameController.text}');
       Get.snackbar(
         'Sign Up Failed',
         error,
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[400],
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
       );
     } else {
-      print('✅ Sign Up Successful!');
-      Get.offAllNamed(Routes.HOME);
+      Get.offAllNamed(Routes.MAIN);
     }
   }
 
   Future<void> _signUpWithGoogle() async {
-    print('🔷 Attempting Google sign up...');
     final error = await _authService.signInWithGoogle();
 
     if (error != null) {
-      print('❌ Google Sign Up Failed: $error');
       Get.snackbar(
-        'Google Sign Up Failed',
+        'Sign Up Failed',
         error,
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[400],
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
       );
     } else {
-      print('✅ Google Sign Up Successful!');
-      Get.offAllNamed(Routes.HOME);
+      Get.offAllNamed(Routes.MAIN);
     }
   }
 
