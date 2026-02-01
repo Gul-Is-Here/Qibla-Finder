@@ -1,6 +1,7 @@
 package com.qibla_compass_offline.app
 
 import android.os.Bundle
+import android.widget.RelativeLayout
 import com.ryanheise.audioservice.AudioServiceFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugins.GeneratedPluginRegistrant
@@ -8,7 +9,9 @@ import io.flutter.plugin.common.MethodChannel
 import com.inmobi.sdk.InMobiSdk
 import com.inmobi.sdk.SdkInitializationListener
 import com.inmobi.ads.InMobiInterstitial
+import com.inmobi.ads.InMobiBanner
 import com.inmobi.ads.listeners.InterstitialAdEventListener
+import com.inmobi.ads.listeners.BannerAdEventListener
 import com.inmobi.ads.AdMetaInfo
 import com.inmobi.ads.InMobiAdRequestStatus
 import org.json.JSONObject
@@ -20,7 +23,9 @@ class MainActivity : AudioServiceFragmentActivity() {
     
     private var methodChannel: MethodChannel? = null
     private var interstitialAd: InMobiInterstitial? = null
+    private var bannerAd: InMobiBanner? = null
     private var isInterstitialReady = false
+    private var isBannerReady = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -60,6 +65,24 @@ class MainActivity : AudioServiceFragmentActivity() {
                 "dispose" -> {
                     interstitialAd = null
                     isInterstitialReady = false
+                    result.success(true)
+                }
+                "loadBanner" -> {
+                    val placementId = call.argument<String>("placementId")
+                    if (placementId != null) {
+                        loadBanner(placementId.toLong())
+                        result.success(true)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Placement ID is required", null)
+                    }
+                }
+                "isBannerReady" -> {
+                    result.success(isBannerReady)
+                }
+                "destroyBanner" -> {
+                    bannerAd?.destroy()
+                    bannerAd = null
+                    isBannerReady = false
                     result.success(true)
                 }
                 else -> result.notImplemented()
@@ -185,7 +208,97 @@ class MainActivity : AudioServiceFragmentActivity() {
         }
     }
 
+    private fun loadBanner(placementId: Long) {
+        try {
+            Log.d(TAG, "📥 Loading InMobi Banner with placement: $placementId")
+            
+            runOnUiThread {
+                // Destroy existing banner if any
+                bannerAd?.destroy()
+                
+                bannerAd = InMobiBanner(this, placementId)
+                
+                // Set banner size (320x50 is standard mobile banner)
+                val layoutParams = RelativeLayout.LayoutParams(
+                    (320 * resources.displayMetrics.density).toInt(),
+                    (50 * resources.displayMetrics.density).toInt()
+                )
+                bannerAd?.layoutParams = layoutParams
+                
+                // Set refresh interval (60 seconds)
+                bannerAd?.setRefreshInterval(60)
+                
+                // Set animation type for refresh
+                bannerAd?.setAnimationType(InMobiBanner.AnimationType.ROTATE_HORIZONTAL_AXIS)
+                
+                bannerAd?.setListener(object : BannerAdEventListener() {
+                    
+                    override fun onAdFetchSuccessful(ad: InMobiBanner, info: AdMetaInfo) {
+                        Log.d(TAG, "📦 Banner ad fetched, preparing to load...")
+                    }
+                    
+                    override fun onAdLoadSucceeded(ad: InMobiBanner, info: AdMetaInfo) {
+                        Log.d(TAG, "✅ Banner loaded successfully - Creative ID: ${info.creativeID}")
+                        isBannerReady = true
+                        runOnUiThread {
+                            methodChannel?.invokeMethod("onBannerLoaded", null)
+                        }
+                    }
+
+                    override fun onAdLoadFailed(ad: InMobiBanner, status: InMobiAdRequestStatus) {
+                        Log.e(TAG, "❌ Banner load failed: ${status.statusCode} - ${status.message}")
+                        isBannerReady = false
+                        runOnUiThread {
+                            methodChannel?.invokeMethod("onBannerLoadFailed", "${status.statusCode}: ${status.message}")
+                        }
+                    }
+
+                    override fun onAdDisplayed(ad: InMobiBanner) {
+                        Log.d(TAG, "📺 Banner displayed")
+                        runOnUiThread {
+                            methodChannel?.invokeMethod("onBannerDisplayed", null)
+                        }
+                    }
+
+                    override fun onAdDismissed(ad: InMobiBanner) {
+                        Log.d(TAG, "✅ Banner dismissed")
+                        runOnUiThread {
+                            methodChannel?.invokeMethod("onBannerDismissed", null)
+                        }
+                    }
+
+                    override fun onAdClicked(ad: InMobiBanner, params: MutableMap<Any, Any>?) {
+                        Log.d(TAG, "👆 Banner clicked")
+                        runOnUiThread {
+                            methodChannel?.invokeMethod("onBannerClicked", null)
+                        }
+                    }
+
+                    override fun onUserLeftApplication(ad: InMobiBanner) {
+                        Log.d(TAG, "👋 User left application from banner")
+                    }
+
+                    override fun onRewardsUnlocked(ad: InMobiBanner, rewards: MutableMap<Any, Any>?) {
+                        Log.d(TAG, "🎁 Banner rewards unlocked: $rewards")
+                    }
+                    
+                    override fun onAdImpression(ad: InMobiBanner) {
+                        Log.d(TAG, "📊 Banner impression logged")
+                    }
+                })
+                
+                // Load the banner ad
+                bannerAd?.load()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error loading banner: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
     override fun onDestroy() {
+        bannerAd?.destroy()
+        bannerAd = null
         interstitialAd = null
         super.onDestroy()
     }

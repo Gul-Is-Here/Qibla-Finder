@@ -13,6 +13,7 @@ import 'routes/app_pages.dart';
 import 'services/notifications/notification_service.dart';
 import 'services/ads/inmobi_ad_service.dart';
 import 'services/auth/auth_service.dart';
+import 'services/shorebird/shorebird_service.dart';
 // TODO: Uncomment for premium features in next version
 // import 'services/subscription_service.dart';
 
@@ -90,6 +91,14 @@ Future<void> _initializeServicesInBackground() async {
     if (!Get.isRegistered<InMobiAdService>()) {
       Get.put(InMobiAdService(), permanent: true);
     }
+
+    // Initialize Shorebird for code push updates
+    await ShorebirdService().initializeAndCheck().timeout(
+      const Duration(seconds: 3),
+      onTimeout: () {
+        Logger.log('Shorebird initialization timeout', tag: 'SHOREBIRD');
+      },
+    );
 
     // TODO: Uncomment for premium features in next version
     // Initialize Subscription Service

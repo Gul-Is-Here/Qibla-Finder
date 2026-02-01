@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../controllers/compass_controller/qibla_controller.dart';
 import '../../services/ads/ad_service.dart';
 import '../../services/auth/auth_service.dart';
@@ -235,8 +236,11 @@ class SettingsScreen extends StatelessWidget {
                       title: 'Rate App',
                       subtitle: 'Love the app? Rate us!',
                       onTap: () {
-                        // TODO: Add actual Play Store rating link
-                        // launchUrl(Uri.parse('https://play.google.com/store/apps/details?id=com.qibla_compass_offline.app'));
+                        launchUrl(
+                          Uri.parse(
+                            'https://play.google.com/store/apps/details?id=com.qibla_compass_offline.app',
+                          ),
+                        );
                       },
                     ),
                   ]),

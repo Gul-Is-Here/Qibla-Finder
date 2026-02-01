@@ -30,10 +30,10 @@ class DhikrCounterController extends GetxController {
       'transliteration': 'La ilaha illallah',
       'meaning': 'There is no god but Allah',
     },
-    'AstaghfirullahRabbee': {
-      'arabic': 'أَسْتَغْفِرُ اللَّهَ رَبِّي',
-      'transliteration': 'Astaghfirullah Rabbee',
-      'meaning': 'I seek forgiveness from Allah, my Lord',
+    'Astaghfirullah': {
+      'arabic': 'أَسْتَغْفِرُ اللَّهَ',
+      'transliteration': 'Astaghfirullah',
+      'meaning': 'I seek forgiveness from Allah',
     },
   };
 
@@ -46,7 +46,6 @@ class DhikrCounterController extends GetxController {
   void incrementCount() {
     count.value++;
     saveCount();
-    // Haptic feedback
     HapticFeedback.mediumImpact();
   }
 
@@ -57,7 +56,7 @@ class DhikrCounterController extends GetxController {
 
   void selectDhikr(String dhikr) {
     selectedDhikr.value = dhikr;
-    loadCount(); // Load count for selected dhikr
+    loadCount();
   }
 
   void saveCount() {
@@ -74,418 +73,245 @@ class DhikrCounterController extends GetxController {
 class DhikrCounterScreen extends StatelessWidget {
   const DhikrCounterScreen({super.key});
 
-  Color get primary => const Color(0xFF8F66FF);
-  Color get lightPurple => const Color(0xFFAB80FF);
-  Color get darkPurple => const Color(0xFF2D1B69);
-  Color get goldAccent => const Color(0xFFD4AF37);
-  Color get moonWhite => const Color(0xFFF8F4E9);
-  Color get darkBg => const Color(0xFF1A1A2E);
-  Color get cardBg => const Color(0xFF2A2A3E);
+  // App Theme Colors - Matching app design
+  static const Color primaryPurple = Color(0xFF8F66FF);
+  static const Color lightPurple = Color(0xFFAB80FF);
+  static const Color darkPurple = Color(0xFF2D1B69);
+  static const Color goldAccent = Color(0xFFD4AF37);
+  static const Color starWhite = Color(0xFFF8F4E9);
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(DhikrCounterController());
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenHeight < 700;
 
     return Scaffold(
-      backgroundColor: darkBg,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [darkPurple, primary.withOpacity(0.3), darkBg],
-            stops: const [0.0, 0.5, 1.0],
+      backgroundColor: starWhite,
+      appBar: AppBar(
+        backgroundColor: primaryPurple,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          onPressed: () => Get.back(),
+        ),
+        title: Text(
+          'Tasbih Counter',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Enhanced App Bar
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [primary.withOpacity(0.3), Colors.transparent]),
-                ),
-                child: Row(
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            onPressed: () => _showResetDialog(context, controller),
+          ),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableHeight = constraints.maxHeight;
+          final counterSize = isSmallScreen ? 140.0 : 160.0;
+
+          return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: availableHeight),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    GestureDetector(
-                      onTap: () => Get.back(),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: moonWhite.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: goldAccent.withOpacity(0.3), width: 1.5),
-                        ),
-                        child: Icon(Icons.arrow_back_rounded, color: moonWhite, size: 22),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Dhikr Counter',
-                            style: GoogleFonts.cinzel(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: moonWhite,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          Text(
-                            'Remember Allah',
-                            style: GoogleFonts.poppins(
-                              fontSize: 11,
-                              color: moonWhite.withOpacity(0.7),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => _showResetDialog(controller),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [goldAccent.withOpacity(0.3), goldAccent.withOpacity(0.1)],
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: goldAccent.withOpacity(0.5), width: 1.5),
-                        ),
-                        child: Icon(Icons.refresh_rounded, color: goldAccent, size: 22),
-                      ),
-                    ),
+                    const SizedBox(height: 12),
+
+                    // Dhikr Selection Chips
+                    Obx(() => _buildDhikrSelector(controller)),
+
+                    SizedBox(height: isSmallScreen ? 12 : 16),
+
+                    // Arabic Text Card - Compact
+                    Obx(() => _buildArabicCard(controller, isSmallScreen)),
+
+                    SizedBox(height: isSmallScreen ? 16 : 24),
+
+                    // Counter Button
+                    Obx(() => _buildCounterButton(controller, counterSize)),
+
+                    SizedBox(height: isSmallScreen ? 12 : 20),
+
+                    // Target Progress - Compact
+                    Obx(() => _buildTargetProgress(controller, isSmallScreen)),
+
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
-              const SizedBox(height: 10),
+  Widget _buildDhikrSelector(DhikrCounterController controller) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      alignment: WrapAlignment.center,
+      children: controller.dhikrList.keys.map((dhikrKey) {
+        final isSelected = controller.selectedDhikr.value == dhikrKey;
+        return GestureDetector(
+          onTap: () => controller.selectDhikr(dhikrKey),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: isSelected ? LinearGradient(colors: [primaryPurple, darkPurple]) : null,
+              color: isSelected ? null : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? goldAccent : primaryPurple.withOpacity(0.3),
+                width: isSelected ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: isSelected
+                      ? primaryPurple.withOpacity(0.25)
+                      : Colors.black.withOpacity(0.04),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              controller.dhikrList[dhikrKey]!['transliteration']!,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : Colors.grey[700],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 
-              // Main Counter Area with enhanced design
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: darkBg,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(40),
-                      topRight: Radius.circular(40),
-                    ),
-                    border: Border(top: BorderSide(color: goldAccent.withOpacity(0.3), width: 2)),
-                  ),
-                  child: Obx(
-                    () => SingleChildScrollView(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          // Dhikr Selection Section with enhanced design
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [goldAccent.withOpacity(0.2), Colors.transparent],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.menu_book_rounded, color: goldAccent, size: 20),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Select Dhikr',
-                                style: GoogleFonts.cinzel(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: moonWhite,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            alignment: WrapAlignment.center,
-                            children: controller.dhikrList.keys.map((dhikrKey) {
-                              final isSelected = controller.selectedDhikr.value == dhikrKey;
-                              return GestureDetector(
-                                onTap: () => controller.selectDhikr(dhikrKey),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    gradient: isSelected
-                                        ? LinearGradient(
-                                            colors: [primary, primary.withOpacity(0.7)],
-                                          )
-                                        : null,
-                                    color: isSelected ? null : cardBg,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: isSelected ? goldAccent : primary.withOpacity(0.3),
-                                      width: isSelected ? 2 : 1,
-                                    ),
-                                    boxShadow: isSelected
-                                        ? [
-                                            BoxShadow(
-                                              color: primary.withOpacity(0.4),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: Text(
-                                    controller.dhikrList[dhikrKey]!['transliteration']!,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: isSelected ? moonWhite : moonWhite.withOpacity(0.7),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
+  Widget _buildArabicCard(DhikrCounterController controller, bool isSmall) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: isSmall ? 16 : 20, horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [primaryPurple, darkPurple],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: goldAccent.withOpacity(0.3), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: primaryPurple.withOpacity(0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Text(
+            controller.currentDhikr['arabic']!,
+            style: GoogleFonts.amiri(
+              fontSize: isSmall ? 28 : 32,
+              fontWeight: FontWeight.w700,
+              color: goldAccent,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.rtl,
+          ),
+          SizedBox(height: isSmall ? 8 : 10),
+          Text(
+            controller.currentDhikr['transliteration']!,
+            style: GoogleFonts.poppins(
+              fontSize: isSmall ? 14 : 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            controller.currentDhikr['meaning']!,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              color: Colors.white.withOpacity(0.7),
+              fontStyle: FontStyle.italic,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
 
-                          const SizedBox(height: 32),
-
-                          // Enhanced Arabic Text Card
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [primary.withOpacity(0.2), darkPurple.withOpacity(0.3)],
-                              ),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: goldAccent.withOpacity(0.4), width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: primary.withOpacity(0.2),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                // Decorative top line
-                                Container(
-                                  height: 2,
-                                  width: 50,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [Colors.transparent, goldAccent, Colors.transparent],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  controller.currentDhikr['arabic']!,
-                                  style: GoogleFonts.amiri(
-                                    fontSize: 34,
-                                    fontWeight: FontWeight.w700,
-                                    color: goldAccent,
-                                    height: 1.6,
-                                    shadows: [
-                                      Shadow(color: goldAccent.withOpacity(0.3), blurRadius: 10),
-                                    ],
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  textDirection: TextDirection.rtl,
-                                ),
-                                const SizedBox(height: 16),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: moonWhite.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    controller.currentDhikr['transliteration']!,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: moonWhite,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  controller.currentDhikr['meaning']!,
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    color: moonWhite.withOpacity(0.7),
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 14),
-                                // Decorative bottom line
-                                Container(
-                                  height: 2,
-                                  width: 50,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [Colors.transparent, goldAccent, Colors.transparent],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 40),
-
-                          // Enhanced Counter Display with Beautiful Tap Button
-                          GestureDetector(
-                            onTap: controller.incrementCount,
-                            child: Container(
-                              width: 220,
-                              height: 220,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [goldAccent, goldAccent.withOpacity(0.8), primary],
-                                ),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: goldAccent.withOpacity(0.4),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 10),
-                                    spreadRadius: 5,
-                                  ),
-                                  BoxShadow(
-                                    color: primary.withOpacity(0.3),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, -5),
-                                  ),
-                                ],
-                              ),
-                              child: Container(
-                                margin: const EdgeInsets.all(7),
-                                decoration: BoxDecoration(
-                                  gradient: RadialGradient(colors: [darkBg, cardBg]),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: goldAccent.withOpacity(0.3), width: 2),
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        '${controller.count.value}',
-                                        style: GoogleFonts.orbitron(
-                                          fontSize: 56,
-                                          fontWeight: FontWeight.bold,
-                                          foreground: Paint()
-                                            ..shader = LinearGradient(
-                                              colors: [goldAccent, moonWhite, goldAccent],
-                                            ).createShader(const Rect.fromLTWH(0, 0, 200, 70)),
-                                          shadows: [
-                                            Shadow(
-                                              color: goldAccent.withOpacity(0.5),
-                                              blurRadius: 20,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 18,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [goldAccent, goldAccent.withOpacity(0.8)],
-                                          ),
-                                          borderRadius: BorderRadius.circular(18),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: goldAccent.withOpacity(0.3),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.touch_app_rounded,
-                                              color: darkPurple,
-                                              size: 16,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'TAP HERE',
-                                              style: GoogleFonts.poppins(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: darkPurple,
-                                                letterSpacing: 1.2,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // Enhanced Target Section
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [goldAccent.withOpacity(0.2), Colors.transparent],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.flag_rounded, color: goldAccent, size: 18),
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                'Targets',
-                                style: GoogleFonts.cinzel(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: moonWhite,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _buildTargetIndicator(controller, 33),
-                              _buildTargetIndicator(controller, 99),
-                              _buildTargetIndicator(controller, 100),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                        ],
+  Widget _buildCounterButton(DhikrCounterController controller, double size) {
+    return GestureDetector(
+      onTap: controller.incrementCount,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [primaryPurple, darkPurple],
+          ),
+          border: Border.all(color: goldAccent, width: 2.5),
+          boxShadow: [
+            BoxShadow(
+              color: primaryPurple.withOpacity(0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${controller.count.value}',
+                style: GoogleFonts.poppins(
+                  fontSize: size * 0.3,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  color: goldAccent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.touch_app, color: darkPurple, size: 12),
+                    const SizedBox(width: 3),
+                    Text(
+                      'TAP',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: darkPurple,
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
@@ -495,201 +321,168 @@ class DhikrCounterScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTargetIndicator(DhikrCounterController controller, int target) {
-    return Obx(() {
-      final progress = (controller.count.value / target).clamp(0.0, 1.0);
-      final isCompleted = controller.count.value >= target;
-
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: isCompleted
-              ? LinearGradient(
-                  colors: [
-                    const Color(0xFF4CAF50).withOpacity(0.3),
-                    const Color(0xFF66BB6A).withOpacity(0.2),
-                  ],
-                )
-              : LinearGradient(colors: [cardBg, darkPurple.withOpacity(0.5)]),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isCompleted ? const Color(0xFF4CAF50) : primary.withOpacity(0.4),
-            width: 2,
+  Widget _buildTargetProgress(DhikrCounterController controller, bool isSmall) {
+    return Container(
+      padding: EdgeInsets.all(isSmall ? 12 : 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primaryPurple.withOpacity(0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
-          boxShadow: isCompleted
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF4CAF50).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Stack(
-              alignment: Alignment.center,
+        ],
+      ),
+      child: Row(
+        children: [
+          // Goals label
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.emoji_events_rounded, color: goldAccent, size: 18),
+              const SizedBox(height: 4),
+              Text(
+                'Goals',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          // Target chips
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    backgroundColor: moonWhite.withOpacity(0.1),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      isCompleted ? const Color(0xFF4CAF50) : goldAccent,
-                    ),
-                    strokeWidth: 5,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: isCompleted
-                        ? const Color(0xFF4CAF50).withOpacity(0.2)
-                        : goldAccent.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isCompleted ? Icons.check_circle_rounded : Icons.flag_rounded,
-                    color: isCompleted ? const Color(0xFF4CAF50) : goldAccent,
-                    size: 20,
-                  ),
-                ),
+                _buildTargetChip(controller, 33, isSmall),
+                _buildTargetChip(controller, 99, isSmall),
+                _buildTargetChip(controller, 100, isSmall),
               ],
             ),
-            const SizedBox(height: 10),
-            Text(
-              '$target',
-              style: GoogleFonts.orbitron(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isCompleted ? const Color(0xFF4CAF50) : goldAccent,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              isCompleted ? 'Done!' : 'Goal',
-              style: GoogleFonts.poppins(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: isCompleted ? const Color(0xFF4CAF50) : moonWhite.withOpacity(0.6),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+          ),
+        ],
+      ),
+    );
   }
 
-  void _showResetDialog(DhikrCounterController controller) {
+  Widget _buildTargetChip(DhikrCounterController controller, int target, bool isSmall) {
+    final progress = (controller.count.value / target).clamp(0.0, 1.0);
+    final isCompleted = controller.count.value >= target;
+
+    return Container(
+      width: isSmall ? 70 : 75,
+      padding: EdgeInsets.symmetric(vertical: isSmall ? 8 : 10),
+      decoration: BoxDecoration(
+        gradient: isCompleted
+            ? LinearGradient(colors: [const Color(0xFF4CAF50), const Color(0xFF66BB6A)])
+            : null,
+        color: isCompleted ? null : primaryPurple.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isCompleted ? const Color(0xFF4CAF50) : primaryPurple.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: isSmall ? 32 : 36,
+                height: isSmall ? 32 : 36,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  backgroundColor: Colors.grey.withOpacity(0.15),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isCompleted ? Colors.white : primaryPurple,
+                  ),
+                  strokeWidth: 3,
+                ),
+              ),
+              Icon(
+                isCompleted ? Icons.check : Icons.flag,
+                color: isCompleted ? Colors.white : primaryPurple,
+                size: isSmall ? 14 : 16,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$target',
+            style: GoogleFonts.poppins(
+              fontSize: isSmall ? 13 : 14,
+              fontWeight: FontWeight.w700,
+              color: isCompleted ? Colors.white : primaryPurple,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showResetDialog(BuildContext context, DhikrCounterController controller) {
     Get.dialog(
       AlertDialog(
-        backgroundColor: cardBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(22),
-          side: BorderSide(color: goldAccent.withOpacity(0.3), width: 2),
-        ),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(9),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [goldAccent.withOpacity(0.3), goldAccent.withOpacity(0.1)],
-                ),
-                borderRadius: BorderRadius.circular(11),
+                color: primaryPurple.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.refresh_rounded, color: goldAccent, size: 22),
+              child: Icon(Icons.refresh_rounded, color: primaryPurple, size: 20),
             ),
-            const SizedBox(width: 11),
+            const SizedBox(width: 12),
             Text(
-              'Reset Counter',
-              style: GoogleFonts.cinzel(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: moonWhite,
-                letterSpacing: 0.5,
-              ),
+              'Reset Counter?',
+              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ],
         ),
         content: Text(
-          'Are you sure you want to reset the counter for ${controller.currentDhikr['transliteration']}?',
-          style: GoogleFonts.poppins(fontSize: 13, color: moonWhite.withOpacity(0.8)),
+          'This will reset ${controller.currentDhikr['transliteration']} counter to 0.',
+          style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600]),
         ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-            ),
             child: Text(
               'Cancel',
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                color: moonWhite.withOpacity(0.7),
-                fontWeight: FontWeight.w600,
-              ),
+              style: GoogleFonts.poppins(color: Colors.grey[600], fontWeight: FontWeight.w500),
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [goldAccent, goldAccent.withOpacity(0.8)]),
-              borderRadius: BorderRadius.circular(11),
-              boxShadow: [
-                BoxShadow(
-                  color: goldAccent.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          ElevatedButton(
+            onPressed: () {
+              controller.resetCount();
+              Get.back();
+              Get.snackbar(
+                'Reset Complete',
+                'Counter has been reset to 0',
+                backgroundColor: primaryPurple,
+                colorText: Colors.white,
+                snackPosition: SnackPosition.BOTTOM,
+                margin: const EdgeInsets.all(16),
+                borderRadius: 12,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryPurple,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             ),
-            child: ElevatedButton(
-              onPressed: () {
-                controller.resetCount();
-                Get.back();
-                Get.snackbar(
-                  'Reset Complete',
-                  'Counter has been reset to 0',
-                  backgroundColor: cardBg,
-                  colorText: moonWhite,
-                  snackPosition: SnackPosition.BOTTOM,
-                  margin: const EdgeInsets.all(14),
-                  borderRadius: 11,
-                  borderColor: goldAccent.withOpacity(0.5),
-                  borderWidth: 2,
-                  icon: Icon(Icons.check_circle, color: goldAccent, size: 20),
-                  titleText: Text(
-                    'Reset Complete',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: moonWhite,
-                    ),
-                  ),
-                  messageText: Text(
-                    'Counter has been reset to 0',
-                    style: GoogleFonts.poppins(fontSize: 12, color: moonWhite.withOpacity(0.8)),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-              ),
-              child: Text(
-                'Reset',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: darkPurple,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+            child: Text(
+              'Reset',
+              style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600),
             ),
           ),
         ],

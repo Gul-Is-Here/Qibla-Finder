@@ -9,8 +9,10 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../controllers/prayer_controller/prayer_times_controller.dart';
+import '../../controllers/prayer_tracker_controller/prayer_tracker_controller.dart';
 import '../../routes/app_pages.dart';
 import '../../services/notifications/notification_service.dart';
+import '../../widgets/prayer_tracker/prayer_streak_widgets.dart';
 import '../../widgets/shimmer_widget/shimmer_loading_widgets.dart';
 import '../notification_views/notification_settings_screen.dart';
 import '../home_view/common_view/islamic_calendar_screen.dart';
@@ -69,51 +71,6 @@ class _BeautifulPrayerTimesScreenState extends State<BeautifulPrayerTimesScreen>
     _shimmerController.dispose();
     super.dispose();
   }
-
-  // void _loadPrayerCompletionStatus() {
-  //   final storage = GetStorage();
-  //   final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-  //   final savedData = storage.read('prayer_completed_$today');
-  //   if (savedData != null) {
-  //     prayerCompleted.value = Map<String, bool>.from(savedData);
-  //   }
-  //   prayerStreak.value = storage.read('prayer_streak') ?? 0;
-  // }
-
-  // void _togglePrayerCompletion(String prayerName) {
-  //   final storage = GetStorage();
-  //   final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-
-  //   prayerCompleted[prayerName] = !(prayerCompleted[prayerName] ?? false);
-  //   storage.write('prayer_completed_$today', prayerCompleted);
-
-  //   // Update streak
-  //   final allCompleted = [
-  //     'Fajr',
-  //     'Dhuhr',
-  //     'Asr',
-  //     'Maghrib',
-  //     'Isha',
-  //   ].every((p) => prayerCompleted[p] == true);
-  //   if (allCompleted) {
-  //     prayerStreak.value++;
-  //     storage.write('prayer_streak', prayerStreak.value);
-  //     _showStreakCelebration();
-  //   }
-  // }
-
-  // void _showStreakCelebration() {
-  //   Get.snackbar(
-  //     '🎉 MashaAllah!',
-  //     'You completed all prayers today! Streak: ${prayerStreak.value} days',
-  //     backgroundColor: islamicGreen,
-  //     colorText: Colors.white,
-  //     snackPosition: SnackPosition.TOP,
-  //     duration: const Duration(seconds: 3),
-  //     margin: const EdgeInsets.all(16),
-  //     borderRadius: 16,
-  //   );
-  // }
 
   Future<void> _requestNotificationPermissionIfNeeded() async {
     try {
@@ -510,88 +467,6 @@ class _BeautifulPrayerTimesScreenState extends State<BeautifulPrayerTimesScreen>
   }
   */
 
-  Widget _buildDailyVerseCard() {
-    // Random daily verse
-    final verses = [
-      {
-        'arabic': 'إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَّوْقُوتًا',
-        'translation':
-            'Indeed, prayer has been decreed upon the believers a decree of specified times.',
-        'reference': 'Surah An-Nisa 4:103',
-      },
-      {
-        'arabic': 'وَأَقِيمُوا الصَّلَاةَ وَآتُوا الزَّكَاةَ',
-        'translation': 'And establish prayer and give zakah.',
-        'reference': 'Surah Al-Baqarah 2:43',
-      },
-      {
-        'arabic': 'حَافِظُوا عَلَى الصَّلَوَاتِ وَالصَّلَاةِ الْوُسْطَىٰ',
-        'translation': 'Maintain with care the prayers and the middle prayer.',
-        'reference': 'Surah Al-Baqarah 2:238',
-      },
-    ];
-
-    final todayIndex = DateTime.now().day % verses.length;
-    final verse = verses[todayIndex];
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [lightPurple.withOpacity(0.1), primaryPurple.withOpacity(0.05)],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: primaryPurple.withOpacity(0.3), width: 1.5),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(Icons.auto_stories, color: primaryPurple, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Daily Verse',
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: primaryPurple,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            verse['arabic']!,
-            style: GoogleFonts.amiri(fontSize: 20, color: Colors.grey[900], height: 1.6),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            verse['translation']!,
-            style: GoogleFonts.poppins(
-              fontSize: 13,
-              color: Colors.grey[700],
-              fontStyle: FontStyle.italic,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            verse['reference']!,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              color: primaryPurple.withOpacity(0.8),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 400.ms, delay: 400.ms);
-  }
-
   // Top compact card showing next prayer with share and view buttons
   Widget _buildNextPrayerTopCard(PrayerTimesController controller) {
     final prayers = controller.prayerTimes.value!.getAllPrayerTimes();
@@ -647,13 +522,43 @@ class _BeautifulPrayerTimesScreenState extends State<BeautifulPrayerTimesScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Next: ${nextPrayer.toUpperCase()}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: starWhite,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          'Next: ${nextPrayer.toUpperCase()}',
+                          style: GoogleFonts.poppins(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: starWhite,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        AnimatedBuilder(
+                          animation: _pulseController,
+                          builder: (context, child) {
+                            return Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: const Color.fromARGB(
+                                  255,
+                                  239,
+                                  185,
+                                  6,
+                                ).withOpacity(.1 + (_pulseController.value * 0.6)),
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: goldAccent.withOpacity(_pulseController.value * 0.1),
+                                    blurRadius: 8,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Row(
@@ -1160,14 +1065,8 @@ Shared from Qibla Compass App
             ),
           ),
 
-          // Featured Card - Ramadan (Keep unchanged)
-          _buildFeaturedQuickActionCard(
-            icon: Icons.nights_stay_rounded,
-            title: 'Ramadan',
-            subtitle: 'Suhoor, Iftar & Fasting Tracker',
-            gradient: [const Color(0xFF8F66FF), const Color(0xFF6B4EE6)],
-            onTap: () => Get.toNamed(Routes.RAMADAN),
-          ).animate().fadeIn(duration: 500.ms).slideX(begin: -0.1, end: 0),
+          // Featured Card - Ramadan with Suhoor & Iftar times
+          _buildRamadanCard().animate().fadeIn(duration: 500.ms).slideX(begin: -0.1, end: 0),
 
           const SizedBox(height: 12),
 
@@ -1299,6 +1198,205 @@ Shared from Qibla Compass App
         .animate()
         .fadeIn(duration: 400.ms)
         .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1));
+  }
+
+  // Beautiful Ramadan Card with Suhoor & Iftar times
+  Widget _buildRamadanCard() {
+    final controller = Get.find<PrayerTimesController>();
+
+    return Obx(() {
+      final prayers = controller.prayerTimes.value?.getAllPrayerTimes();
+      final suhoorTime = prayers?['Fajr'] ?? '--:--';
+      final iftarTime = prayers?['Maghrib'] ?? '--:--';
+
+      return GestureDetector(
+        onTap: () => Get.toNamed(Routes.RAMADAN),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [primaryPurple, darkPurple],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: lightPurple.withOpacity(0.3), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: primaryPurple.withOpacity(0.35),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Left: Icon & Title
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: goldAccent.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: goldAccent.withOpacity(0.3)),
+                ),
+                child: Icon(Icons.nights_stay_rounded, color: goldAccent, size: 24),
+              ),
+              const SizedBox(width: 12),
+
+              // Title
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Ramadan',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Fasting Tracker',
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Suhoor Time
+              _buildCompactTimeChip(
+                icon: Icons.wb_twilight,
+                label: 'Suhoor',
+                time: suhoorTime,
+                iconColor: const Color(0xFF64B5F6),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Iftar Time
+              _buildCompactTimeChip(
+                icon: Icons.dinner_dining,
+                label: 'Iftar',
+                time: iftarTime,
+                iconColor: const Color(0xFFFFB74D),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Arrow
+              Icon(Icons.arrow_forward_ios, color: goldAccent.withOpacity(0.7), size: 14),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  // Compact time chip for Suhoor/Iftar
+  Widget _buildCompactTimeChip({
+    required IconData icon,
+    required String label,
+    required String time,
+    required Color iconColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: iconColor, size: 12),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            _formatTimeTo12Hour(time),
+            style: GoogleFonts.robotoMono(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: goldAccent,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper widget for Suhoor/Iftar time display - kept for reference
+  Widget _buildFastingTimeItem({
+    required IconData icon,
+    required String label,
+    required String sublabel,
+    required String time,
+    required Color iconColor,
+  }) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: iconColor.withOpacity(0.2), shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  sublabel,
+                  style: GoogleFonts.poppins(fontSize: 10, color: Colors.white.withOpacity(0.5)),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        AnimatedBuilder(
+          animation: _pulseController,
+          builder: (context, child) {
+            return Text(
+              _formatTimeTo12Hour(time),
+              style: GoogleFonts.robotoMono(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: goldAccent.withOpacity(0.8 + _pulseController.value * 0.2),
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 
   // Enhanced Featured card for highlighted actions
