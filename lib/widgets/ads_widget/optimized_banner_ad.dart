@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:ironsource_mediation/ironsource_mediation.dart';
 import '../../services/ads/ad_service.dart';
+import '../../services/ads/ironsource_ad_service.dart';
 // TODO: Uncomment for premium features in next version
 // import '../../services/subscription_service.dart';
 // import 'subscription_prompt_banner.dart';
@@ -23,38 +25,84 @@ class OptimizedBannerAdWidget extends StatefulWidget {
 }
 
 class _OptimizedBannerAdWidgetState extends State<OptimizedBannerAdWidget> {
-  BannerAd? _localBannerAd;
+  // AdMob (primary)
+  BannerAd? _admobBannerAd;
+  bool _admobLoaded = false;
+  bool _admobFailed = false;
+
+  // IronSource (fallback)
+  final _bannerKey = GlobalKey<LevelPlayBannerAdViewState>();
+  final _adSize = LevelPlayAdSize.BANNER;
+  bool _ironSourceReady = false;
+  LevelPlayBannerAdViewListener? _ironSourceListener;
 
   @override
   void initState() {
     super.initState();
-    _loadLocalBannerAd();
+    _loadAdMobBanner();
   }
 
-  void _loadLocalBannerAd() {
-    // Don't load ads if disabled for store submission
-    if (AdService.areAdsDisabled) {
+  // Step 1: Load AdMob banner first
+  void _loadAdMobBanner() {
+    if (AdService.areAdsDisabled) return;
+
+    final adService = Get.find<AdService>();
+    _admobBannerAd = adService.createUniqueBannerAd(
+      customKey: widget.key.toString(),
+      onAdLoaded: () {
+        if (mounted) {
+          print('✅ AdMob banner loaded successfully');
+          setState(() => _admobLoaded = true);
+        }
+      },
+      onAdFailed: () {
+        if (mounted) {
+          print('❌ AdMob banner failed, trying IronSource...');
+          setState(() {
+            _admobFailed = true;
+            _admobBannerAd = null;
+          });
+          // Fallback to IronSource
+          _loadIronSourceBanner();
+        }
+      },
+    );
+    _admobBannerAd?.load();
+  }
+
+  // Step 2: If AdMob fails, try IronSource
+  void _loadIronSourceBanner() {
+    if (!Get.isRegistered<IronSourceAdService>()) return;
+
+    final adService = Get.find<IronSourceAdService>();
+    if (!adService.isInitialized) {
+      // Retry after 3s if not initialized yet
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted && _admobFailed) _loadIronSourceBanner();
+      });
       return;
     }
 
-    // Create a unique banner ad instance using AdService
-    final adService = Get.find<AdService>();
-    _localBannerAd = adService.createUniqueBannerAd(customKey: widget.key.toString());
+    _ironSourceListener = adService.createBannerListener(
+      onLoaded: () {
+        print('✅ IronSource banner loaded (fallback)');
+      },
+      onFailed: () {
+        print('❌ IronSource banner also failed');
+      },
+    );
 
-    if (_localBannerAd != null) {
-      _localBannerAd!.load();
-    }
+    if (mounted) setState(() => _ironSourceReady = true);
   }
 
   @override
   void dispose() {
-    _localBannerAd?.dispose();
+    _admobBannerAd?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Don't show ads if disabled for store submission
     if (AdService.areAdsDisabled) {
       return const SizedBox.shrink();
     }
@@ -72,22 +120,41 @@ class _OptimizedBannerAdWidgetState extends State<OptimizedBannerAdWidget> {
     //   // Subscription service not ready yet
     // }
 
-    // Use local banner ad
-    if (_localBannerAd == null && widget.showOnlyWhenLoaded) {
-      return const SizedBox.shrink();
+    final padding = widget.padding ?? const EdgeInsets.all(8.0);
+
+    // Priority 1: Show AdMob banner
+    if (_admobLoaded && _admobBannerAd != null) {
+      return Container(
+        padding: padding,
+        child: SizedBox(
+          width: _admobBannerAd!.size.width.toDouble(),
+          height: _admobBannerAd!.size.height.toDouble(),
+          child: AdWidget(ad: _admobBannerAd!),
+        ),
+      );
     }
 
-    if (_localBannerAd == null) {
-      return const SizedBox.shrink();
+    // Priority 2: Show IronSource banner as fallback
+    if (_admobFailed && _ironSourceReady && _ironSourceListener != null) {
+      return Container(
+        padding: padding,
+        child: SizedBox(
+          width: _adSize.width.toDouble(),
+          height: _adSize.height.toDouble(),
+          child: LevelPlayBannerAdView(
+            key: _bannerKey,
+            adUnitId: IronSourceAdService.bannerAdUnitId,
+            adSize: _adSize,
+            listener: _ironSourceListener!,
+            placementName: 'FallbackBanner',
+            onPlatformViewCreated: () {
+              _bannerKey.currentState?.loadAd();
+            },
+          ),
+        ),
+      );
     }
 
-    return Container(
-      padding: widget.padding ?? const EdgeInsets.all(8.0),
-      child: SizedBox(
-        width: _localBannerAd!.size.width.toDouble(),
-        height: _localBannerAd!.size.height.toDouble(),
-        child: AdWidget(ad: _localBannerAd!),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }

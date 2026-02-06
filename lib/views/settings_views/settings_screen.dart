@@ -8,6 +8,7 @@ import '../../services/auth/auth_service.dart';
 // TODO: Uncomment for premium features in next version
 // import '../../services/subscription_service.dart';
 import '../../routes/app_pages.dart';
+import '../test_views/ad_test_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -245,6 +246,19 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ]),
 
+                  // ElevatedButton(
+                  //   onPressed: () {
+                  //     Get.to(() => AdTestScreen());
+                  //   },
+                  //   child: Text(
+                  //     'Test Ad Screen',
+                  //     style: GoogleFonts.poppins(
+                  //       fontSize: 14,
+                  //       fontWeight: FontWeight.w600,
+                  //       color: Colors.white,
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(height: 40),
                 ],
               ),

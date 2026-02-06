@@ -4,6 +4,8 @@ allprojects {
         mavenCentral()
         // InMobi SDK Repository
         maven { url = uri("https://dl.cloudsmith.io/public/inmobi/inmobi-android-sdk/maven/") }
+        // IronSource / LevelPlay SDK Repository
+        maven { url = uri("https://android-sdk.is.com/") }
     }
 }
 

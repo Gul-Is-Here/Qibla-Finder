@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../subscription_service.dart';
+import 'ironsource_ad_service.dart';
 
 class AdService extends GetxController {
   static AdService get instance => Get.find<AdService>();
@@ -82,6 +84,10 @@ class AdService extends GetxController {
   var isInterstitialAdLoaded = false.obs;
   var isRewardedAdLoaded = false.obs;
 
+  // Last loaded ad source info (for testing/debugging)
+  final lastInterstitialSource = ''.obs;
+  final lastBannerSource = ''.obs;
+
   // Ad click tracking for optimization
   var adClickCount = 0.obs;
   var lastAdClickTime = DateTime.now().obs;
@@ -91,11 +97,18 @@ class AdService extends GetxController {
   final DateTime _appStartTime = DateTime.now();
   int _screenNavigationCount = 0;
   bool _isInterstitialShowing = false;
+  Timer? _autoInterstitialTimer;
+  Timer? _bannerRetryTimer;
+  Timer? _bottomBannerRetryTimer;
+  Timer? _interstitialRetryTimer;
+  Timer? _rewardedRetryTimer;
 
   // Daily interstitial ad limit (3 per day, reset at 5 AM)
   final GetStorage _storage = GetStorage();
   static const int _maxInterstitialAdsPerDay = 3;
   static const int _resetHour = 5; // 5 AM reset time
+  final bool _dailyLimitCheckedThisMinute = false;
+  DateTime? _lastDailyLimitCheck;
 
   // Storage keys
   static const String _keyAdCount = 'daily_interstitial_count';
@@ -110,42 +123,38 @@ class AdService extends GetxController {
 
   Future<void> _initializeAds() async {
     try {
-      print('🚀 Initializing Mobile Ads SDK...');
-      await MobileAds.instance.initialize();
-
-      // Set request configuration for better performance and compliance
+      // Skip MobileAds.instance.initialize() — already called in main.dart
+      // Just configure request settings
       await MobileAds.instance.updateRequestConfiguration(
         RequestConfiguration(
           tagForChildDirectedTreatment: TagForChildDirectedTreatment.no,
           tagForUnderAgeOfConsent: TagForUnderAgeOfConsent.no,
-          // Disable InMobi and other mediations that aren't set up
-          testDeviceIds: [], // Add test device IDs if testing
+          testDeviceIds: [],
         ),
       );
 
-      print('✅ Mobile Ads SDK initialized successfully');
+      print('✅ Mobile Ads SDK configured');
 
-      // Load ads with delays to avoid overwhelming the system
+      // Load ads with staggered delays to avoid blocking the main thread
       _loadBannerAd();
 
-      Future.delayed(const Duration(seconds: 2), () {
-        _loadBottomBannerAd(); // Load second banner ad after delay
+      _bottomBannerRetryTimer = Timer(const Duration(seconds: 3), () {
+        _loadBottomBannerAd();
       });
 
-      Future.delayed(const Duration(seconds: 4), () {
+      _interstitialRetryTimer = Timer(const Duration(seconds: 5), () {
         _loadInterstitialAd();
       });
 
-      Future.delayed(const Duration(seconds: 6), () {
+      _rewardedRetryTimer = Timer(const Duration(seconds: 8), () {
         _loadRewardedAd();
       });
 
-      // Start automatic interstitial ad timer
+      // Start automatic interstitial ad timer (single periodic timer, not recursive)
       print('🚀 Starting automatic interstitial ad timer');
       startAutoInterstitialTimer();
     } catch (e) {
       print('❌ Error initializing ads: $e');
-      // Continue without ads if initialization fails
     }
   }
 
@@ -170,7 +179,13 @@ class AdService extends GetxController {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           isBannerAdLoaded.value = true;
-          print('✅ Banner ad loaded successfully');
+          // Extract ad source/network info
+          final info = ad.responseInfo;
+          final loaded = info?.loadedAdapterResponseInfo;
+          lastBannerSource.value = loaded?.adSourceName ?? 'unknown';
+          print(
+            '✅ Banner ad loaded | source: ${lastBannerSource.value} | adapter: ${info?.mediationAdapterClassName ?? "—"}',
+          );
         },
         onAdFailedToLoad: (ad, error) {
           isBannerAdLoaded.value = false;
@@ -185,9 +200,10 @@ class AdService extends GetxController {
             print('❌ Banner ad failed to load: ${error.message} (code: ${error.code})');
           }
 
-          // Retry with exponential backoff (30s, 60s, 120s)
+          // Retry with exponential backoff — cancel previous timer to avoid stacking
           final retryDelay = _bannerAd == null ? 30 : 60;
-          Future.delayed(Duration(seconds: retryDelay), () {
+          _bannerRetryTimer?.cancel();
+          _bannerRetryTimer = Timer(Duration(seconds: retryDelay), () {
             if (!isBannerAdLoaded.value) {
               _loadBannerAd();
             }
@@ -205,7 +221,11 @@ class AdService extends GetxController {
   BannerAd? get bottomBannerAd => _bottomBannerAd;
 
   // Create a new unique banner ad instance for each widget
-  BannerAd? createUniqueBannerAd({String? customKey}) {
+  BannerAd? createUniqueBannerAd({
+    String? customKey,
+    VoidCallback? onAdLoaded,
+    VoidCallback? onAdFailed,
+  }) {
     if (_disableAdsForStore) {
       return null;
     }
@@ -216,11 +236,13 @@ class AdService extends GetxController {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          print('Unique banner ad loaded: ${ad.hashCode}');
+          print('✅ AdMob banner loaded: ${ad.hashCode}');
+          onAdLoaded?.call();
         },
         onAdFailedToLoad: (ad, error) {
-          print('Unique banner ad failed to load: $error');
+          print('❌ AdMob banner failed to load: $error');
           ad.dispose();
+          onAdFailed?.call();
         },
         onAdOpened: (ad) => print('Unique banner ad opened'),
         onAdClosed: (ad) => print('Unique banner ad closed'),
@@ -341,9 +363,10 @@ class AdService extends GetxController {
             print('❌ Bottom banner ad failed: ${error.message} (code: ${error.code})');
           }
 
-          // Retry with longer delay for 403 errors
+          // Retry with longer delay for 403 errors — cancel previous timer
           final retryDelay = error.code == 3 ? 60 : 30;
-          Future.delayed(Duration(seconds: retryDelay), () {
+          _bottomBannerRetryTimer?.cancel();
+          _bottomBannerRetryTimer = Timer(Duration(seconds: retryDelay), () {
             if (!isBottomBannerAdLoaded.value) {
               _loadBottomBannerAd();
             }
@@ -379,6 +402,14 @@ class AdService extends GetxController {
           _interstitialAd = ad;
           isInterstitialAdLoaded.value = true;
 
+          // Extract ad source/network info
+          final info = ad.responseInfo;
+          final loaded = info?.loadedAdapterResponseInfo;
+          lastInterstitialSource.value = loaded?.adSourceName ?? 'unknown';
+          print(
+            '✅ Interstitial ad loaded | source: ${lastInterstitialSource.value} | adapter: ${info?.mediationAdapterClassName ?? "—"}',
+          );
+
           // Remove immersive mode to ensure close button is always visible
           // _interstitialAd?.setImmersiveMode(true); // Commented out for family compliance
           print('✅ Interstitial ad loaded successfully');
@@ -396,9 +427,10 @@ class AdService extends GetxController {
             print('❌ Interstitial load failed: ${error.message} (code: ${error.code})');
           }
 
-          // Retry with longer delay for InMobi/mediation errors
+          // Retry with longer delay — cancel previous timer to prevent stacking
           final retryDelay = error.message.contains('InMobi') ? 120 : 60;
-          Future.delayed(Duration(seconds: retryDelay), () {
+          _interstitialRetryTimer?.cancel();
+          _interstitialRetryTimer = Timer(Duration(seconds: retryDelay), () {
             if (!isInterstitialAdLoaded.value) {
               _loadInterstitialAd();
             }
@@ -436,45 +468,69 @@ class AdService extends GetxController {
       return;
     }
 
+    // Priority 1: AdMob interstitial FIRST
     if (_interstitialAd != null && isInterstitialAdLoaded.value) {
       _isInterstitialShowing = true;
-      print('📺 Showing interstitial ad...');
+      print('📺 Showing AdMob interstitial (primary)...');
 
       _interstitialAd?.fullScreenContentCallback = FullScreenContentCallback(
         onAdDismissedFullScreenContent: (ad) {
-          print('✅ Interstitial ad dismissed');
+          print('✅ AdMob interstitial dismissed');
           ad.dispose();
           isInterstitialAdLoaded.value = false;
           _isInterstitialShowing = false;
           _lastInterstitialShowTime = DateTime.now();
-
-          // Increment count and show appropriate dialog
           _incrementDailyAdCount();
           _showAdCompletedDialog();
-
-          _loadInterstitialAd(); // Load next ad
+          _loadInterstitialAd();
           onAdClosed?.call();
         },
         onAdFailedToShowFullScreenContent: (ad, error) {
-          print('❌ Interstitial ad failed to show: $error');
+          print('❌ AdMob interstitial failed to show: $error');
           ad.dispose();
           isInterstitialAdLoaded.value = false;
           _isInterstitialShowing = false;
           _loadInterstitialAd();
+          onAdClosed?.call();
         },
         onAdClicked: (ad) {
           _trackAdClick();
         },
         onAdShowedFullScreenContent: (ad) {
-          print('📺 Interstitial ad showing full screen content');
+          print('📺 AdMob interstitial showing full screen content');
         },
       );
 
       _interstitialAd?.show();
-    } else {
-      print('⚠️ Interstitial ad not ready to show');
-      onAdClosed?.call();
+      return;
     }
+
+    // Priority 2: IronSource interstitial FALLBACK
+    if (Get.isRegistered<IronSourceAdService>()) {
+      final ironSource = Get.find<IronSourceAdService>();
+      if (ironSource.isInterstitialReady) {
+        _isInterstitialShowing = true;
+        print('📺 Showing IronSource interstitial (fallback)...');
+        ironSource.showInterstitial(
+          onClosed: () {
+            _isInterstitialShowing = false;
+            _lastInterstitialShowTime = DateTime.now();
+            _incrementDailyAdCount();
+            _showAdCompletedDialog();
+            onAdClosed?.call();
+          },
+        );
+        return;
+      }
+    }
+
+    // Neither ready — pre-load both for next time
+    print('⚠️ No interstitial ready (AdMob & IronSource both unavailable)');
+    _loadInterstitialAd();
+    if (Get.isRegistered<IronSourceAdService>()) {
+      Get.find<IronSourceAdService>().loadInterstitial();
+    }
+    onAdClosed?.call();
   }
 
   /// Show beautiful dialog after ad completion
@@ -734,18 +790,24 @@ class AdService extends GetxController {
   }
 
   /// Check if daily interstitial ad limit has been reached
+  /// Throttled — only re-checks storage once per minute
   bool _hasReachedDailyLimit() {
-    _checkAndResetDailyLimit(); // Check for reset first
+    final now = DateTime.now();
+    // Only re-check storage at most once per minute to reduce I/O
+    if (_lastDailyLimitCheck == null || now.difference(_lastDailyLimitCheck!).inSeconds >= 60) {
+      _checkAndResetDailyLimit();
+      _lastDailyLimitCheck = now;
+    }
     final currentCount = _storage.read<int>(_keyAdCount) ?? 0;
     return currentCount >= _maxInterstitialAdsPerDay;
   }
 
-  /// Increment daily interstitial ad count
+  /// Increment daily interstitial ad count (no redundant reset check)
   void _incrementDailyAdCount() {
-    _checkAndResetDailyLimit(); // Check for reset first
     final currentCount = _storage.read<int>(_keyAdCount) ?? 0;
     final newCount = currentCount + 1;
     _storage.write(_keyAdCount, newCount);
+    _lastDailyLimitCheck = null; // Force re-check next time
     print('📈 Daily ad count increased: $newCount/$_maxInterstitialAdsPerDay');
   }
 
@@ -805,17 +867,18 @@ class AdService extends GetxController {
     }
   }
 
-  /// Start automatic interstitial ad timer
+  /// Start automatic interstitial ad timer — uses a single periodic Timer
   void startAutoInterstitialTimer() {
     if (_disableAdsForStore) return;
 
-    // Check every minute if we should show interstitial ad
-    Future.delayed(const Duration(minutes: 1), () {
+    // Cancel any existing timer to prevent duplicates
+    _autoInterstitialTimer?.cancel();
+
+    // Single periodic timer — checks every 60 seconds
+    _autoInterstitialTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (shouldShowInterstitialAdByTime()) {
         autoShowInterstitialAd();
       }
-      // Continue the timer
-      startAutoInterstitialTimer();
     });
   }
 
@@ -840,8 +903,9 @@ class AdService extends GetxController {
           isRewardedAdLoaded.value = false;
           print('Rewarded ad failed to load: $error');
 
-          // Retry after 90 seconds
-          Future.delayed(const Duration(seconds: 90), () {
+          // Retry after 90 seconds — cancel previous timer
+          _rewardedRetryTimer?.cancel();
+          _rewardedRetryTimer = Timer(const Duration(seconds: 90), () {
             _loadRewardedAd();
           });
         },
@@ -921,6 +985,18 @@ class AdService extends GetxController {
   void disposeAds() {
     print('🗑️ Disposing AdService ads...');
 
+    // Cancel all retry/auto timers to prevent orphaned callbacks
+    _autoInterstitialTimer?.cancel();
+    _autoInterstitialTimer = null;
+    _bannerRetryTimer?.cancel();
+    _bannerRetryTimer = null;
+    _bottomBannerRetryTimer?.cancel();
+    _bottomBannerRetryTimer = null;
+    _interstitialRetryTimer?.cancel();
+    _interstitialRetryTimer = null;
+    _rewardedRetryTimer?.cancel();
+    _rewardedRetryTimer = null;
+
     _bannerAd?.dispose();
     _bannerAd = null;
 
@@ -939,7 +1015,7 @@ class AdService extends GetxController {
     isInterstitialAdLoaded.value = false;
     isRewardedAdLoaded.value = false;
 
-    print('✅ AdService disposed - all ads cleaned up');
+    print('✅ AdService disposed - all ads and timers cleaned up');
   }
 
   // Helper method to check if user is premium

@@ -62,6 +62,9 @@ class QiblaController extends GetxController {
   DateTime? _lastCompassUpdate;
   int _compassUpdateInterval = 100; // milliseconds, adaptive
 
+  // Vibration caching — avoid platform call every tick
+  bool? _hasVibratorCached;
+
   final storage = GetStorage();
 
   @override
@@ -425,7 +428,7 @@ class QiblaController extends GetxController {
     }
 
     _compassSubscription = FlutterCompass.events?.listen(
-      (event) async {
+      (event) {
         // Adaptive refresh rate - throttle updates based on movement
         final now = DateTime.now();
         if (_lastCompassUpdate != null) {
@@ -440,14 +443,17 @@ class QiblaController extends GetxController {
 
         // Store old heading for comparison
         final oldHeading = heading.value;
-        heading.value = event.heading ?? 0.0;
+        final newHeading = event.heading ?? 0.0;
 
         // Calculate heading change
-        final headingChange = (heading.value - oldHeading).abs();
+        final headingChange = (newHeading - oldHeading).abs();
+
+        // Skip tiny changes to avoid unnecessary rebuilds
+        if (headingChange < 0.5) return;
+
+        heading.value = newHeading;
 
         // Adaptive interval based on movement
-        // If moving fast (change > 5°), update quickly (100ms)
-        // If stable (change < 1°), slow down (1000ms)
         if (headingChange > 5) {
           _compassUpdateInterval = 100; // Fast updates when turning
         } else if (headingChange > 1) {
@@ -473,25 +479,29 @@ class QiblaController extends GetxController {
         _showErrorSnackbar(compassError.value);
       },
     );
-    update(); // Force UI update
+    // No update() here — Obx will react to heading.value changes automatically
   }
 
   Future<void> _checkQiblaAlignmentAndVibrate() async {
+    if (!isVibrationEnabled.value || hasVibrated) return;
+
     double difference = (heading.value - qiblaAngle.value).abs();
     if (difference > 180) difference = 360 - difference;
 
-    if (difference <= 5 && !hasVibrated && isVibrationEnabled.value) {
-      if (await Vibration.hasVibrator()) {
+    if (difference <= 5) {
+      // Cache vibrator check — only query platform once
+      _hasVibratorCached ??= await Vibration.hasVibrator();
+      if (_hasVibratorCached == true) {
         Vibration.vibrate(duration: 300);
         hasVibrated = true;
 
-        // Reset vibration flag after 5 seconds to allow another vibration later
-        Future.delayed(Duration(seconds: 5), () {
+        // Reset vibration flag after 5 seconds
+        Future.delayed(const Duration(seconds: 5), () {
           hasVibrated = false;
         });
       }
     }
-    update(); // Force UI update
+    // Removed update() — Obx handles reactive updates automatically
   }
 
   void _initLocation() async {
@@ -550,7 +560,8 @@ class QiblaController extends GetxController {
         }
       }
 
-      // Start listening for location updates
+      // Start listening for location updates (throttled storage writes)
+      DateTime lastLocationSave = DateTime.now();
       _locationSubscription = locationService.getPositionStream().listen(
         (position) {
           currentLocation.value = position;
@@ -558,9 +569,13 @@ class QiblaController extends GetxController {
           _calculateQiblaDirection();
           lastUpdateTime.value = DateTime.now();
 
-          // Cache the GPS location
-          storage.write('lastKnownLat', position.latitude);
-          storage.write('lastKnownLng', position.longitude);
+          // Throttle storage writes — save at most once per 30 seconds
+          final now = DateTime.now();
+          if (now.difference(lastLocationSave).inSeconds >= 30) {
+            storage.write('lastKnownLat', position.latitude);
+            storage.write('lastKnownLng', position.longitude);
+            lastLocationSave = now;
+          }
         },
         onError: (error) {
           locationError.value = 'Location error: ${error.toString()}';
@@ -571,7 +586,6 @@ class QiblaController extends GetxController {
       locationError.value = 'Location initialization failed: ${e.toString()}';
       _showErrorSnackbar(locationError.value);
     }
-    update(); // Force UI update
   }
 
   void _initConnectivity() async {

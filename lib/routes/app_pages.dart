@@ -16,6 +16,7 @@ import '../views/onboarding/spiritual_goal_screen.dart';
 import '../views/onboarding/notification_permission_screen.dart';
 import '../views/onboarding/location_permission_screen.dart';
 import '../views/test/notification_test_screen.dart';
+import '../views/test/ad_test_screen.dart';
 // import '../views/home_view/dua_view/Prayers_views/prayer_times_screen.dart';
 import '../views/Quran_views/quran_list_screen.dart';
 import '../views/Quran_views/quran_reader_screen.dart';
@@ -52,6 +53,7 @@ abstract class Routes {
   static const RAMADAN = '/ramadan';
   static const ZAKAT_CALCULATOR = '/zakat-calculator';
   static const NOTIFICATION_TEST = '/notification-test';
+  static const AD_TEST = '/ad-test';
   // Auth routes
   static const SIGN_IN = '/sign-in';
   static const SIGN_UP = '/sign-up';
@@ -134,6 +136,7 @@ class AppPages {
       middlewares: [AdTrackingMiddleware()],
     ),
     GetPage(name: Routes.NOTIFICATION_TEST, page: () => const NotificationTestScreen()),
+    GetPage(name: Routes.AD_TEST, page: () => const AdTestScreen()),
     // Auth routes
     GetPage(name: Routes.SIGN_IN, page: () => const SignInScreen()),
     GetPage(name: Routes.SIGN_UP, page: () => const SignUpScreen()),

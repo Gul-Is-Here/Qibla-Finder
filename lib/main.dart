@@ -12,11 +12,9 @@ import 'core/utils/logger.dart';
 import 'routes/app_pages.dart';
 import 'services/notifications/notification_service.dart';
 import 'services/ads/inmobi_ad_service.dart';
+import 'services/ads/ironsource_ad_service.dart';
 import 'services/auth/auth_service.dart';
 import 'services/shorebird/shorebird_service.dart';
-// TODO: Uncomment for premium features in next version
-// import 'services/subscription_service.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -90,6 +88,17 @@ Future<void> _initializeServicesInBackground() async {
     // Initialize InMobi Ad Service
     if (!Get.isRegistered<InMobiAdService>()) {
       Get.put(InMobiAdService(), permanent: true);
+    }
+
+    // Initialize IronSource / LevelPlay Ad Service
+    if (!Get.isRegistered<IronSourceAdService>()) {
+      final ironSource = Get.put(IronSourceAdService(), permanent: true);
+      await ironSource.initialize().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          Logger.log('IronSource initialization timeout', tag: 'IRONSOURCE');
+        },
+      );
     }
 
     // Initialize Shorebird for code push updates

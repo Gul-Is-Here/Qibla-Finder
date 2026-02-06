@@ -86,6 +86,7 @@ dependencies {
     // Google Play Services - Required for ad targeting
     implementation("com.google.android.gms:play-services-ads-identifier:18.0.1")
     implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.android.gms:play-services-basement:18.3.0")
     
     // Chrome Custom Tab - CRITICAL: Required for URL redirects (ads will fail without this!)
     implementation("androidx.browser:browser:1.8.0")
